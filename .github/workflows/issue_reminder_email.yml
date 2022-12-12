@@ -16,23 +16,19 @@ on:
     - cron: '* 9 * * *'
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.0' # Not needed with a .ruby-version file
-        bundler-cache: true # runs 'bundle install' and caches installed gems automatically
-    - run: bundle exec rake
   reminder_email:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.0' # Not needed with a .ruby-version file
+          bundler-cache: true # runs 'bundle install' and caches installed gems automatically
       - name: Get list of Issues
         run: |
           echo "hoge"
           gem install ghi
+          bundle exec rake
           
           
           # get list of open Issues that haven't been updated in the past week
