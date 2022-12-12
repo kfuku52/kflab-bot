@@ -31,8 +31,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
         run: |
-          issue_txt="`hub issue --state open --format "%I%n%as%n%ur%n%ut%n%t%n%U%n"`"
+          hub issue --state open --format "%I%n%as%n%ur%n%ut%n%t%n%U%n" > hub_out.txt
+          python write_email_text.py hub_out.txt 3600
           ls
-          pwd
 
 
