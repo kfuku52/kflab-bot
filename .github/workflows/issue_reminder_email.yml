@@ -27,4 +27,4 @@ jobs:
           issue_txt=`hub issue --state open --format "%I%n%as%n%ur%n%ut%n%t%n%U%n"`
           issue_txt=`echo -e "${issue_txt}" | sed -e "s/^/\"/" -e "s/$/\"/"`
           issue_arr=( `echo -e "${issue_txt}"` )
-          echo -e "${issue_arr[@}"
+          echo -e "${issue_arr[@]}"
