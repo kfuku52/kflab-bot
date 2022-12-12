@@ -23,6 +23,6 @@ jobs:
       - name: Get list of Issues
         run: |
           echo "hoge"
-          hub issue list
+          hub issue --state open
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
