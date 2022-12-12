@@ -21,8 +21,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Get list of Issues
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
         run: |
           echo "hoge"
           hub issue --state open
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
