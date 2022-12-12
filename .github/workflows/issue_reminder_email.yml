@@ -25,4 +25,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
         run: |
           echo "hoge"
-          hub issue --state open --sort updated --direction descending --format "%U%n%au <%ae>" --since "7 days ago"
+          hub issue --state open --sort updated --direction descending --format "%U%n%au <%ae>"
