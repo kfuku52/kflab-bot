@@ -24,7 +24,30 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
         run: |
-          issue_txt=`hub issue --state open --format "%I%n%as%n%ur%n%ut%n%t%n%U%n"`
-          issue_txt=`echo -e "${issue_txt}" | sed -e "s/^/\"/" -e "s/$/\"/"`
-          issue_arr=( `echo -e "${issue_txt}"` )
-          echo -e "${issue_arr[@]}"
+          issue_txt="`hub issue --state open --format "%I%n%as%n%ur%n%ut%n%t%n%U%n"`"
+          issue_txt="$(echo -e "${issue_txt}" | sed -e "s/^/___/")"
+
+          IFS=$'\n'; read -d '' -a issue_arr <<< "`echo -e "$issue_txt"`"
+          num_issue=$[${#issue_arr[@]}/6]
+          echo -e "Number of open Issues: ${num_issue}"
+          for i in `seq 0 $[${num_issue}-1]`; do
+            issue_number="`echo ${issue_arr[$[${i}*6+0]]} | sed -e "s/^___//"`"
+            assignees="`echo ${issue_arr[$[${i}*6+1]]} | sed -e "s/^___//"`"
+            relative_time_updated="`echo ${issue_arr[$[${i}*6+2]]} | sed -e "s/^___//"`"
+            unix_timestamp_updated="`echo ${issue_arr[$[${i}*6+3]]} | sed -e "s/^___//"`"
+            issue_title="`echo ${issue_arr[$[${i}*6+4]]} | sed -e "s/^___//"`"
+            issue_url="`echo ${issue_arr[$[${i}*6+5]]} | sed -e "s/^___//"`"
+
+            echo "Issue number: ${issue_number}"
+            echo "Assignees: ${assignees}"
+            echo "Relative time updated: ${relative_time_updated}"
+            echo "UNIX timestamp updated: ${unix_timestamp_updated}"
+            echo "Issue title: ${issue_title}"
+            echo "Issue URL: ${issue_url}"
+
+            IFS=','; read -d '' -a assignees <<< "hoge,fuga"
+            echo "Number of assignees: ${#assignees[@]}"
+
+
+            echo ""
+          done
