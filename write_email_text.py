@@ -1,6 +1,8 @@
 import sys
 import time
 
+print('Starting write_email_text.py')
+
 hub_out_file = sys.argv[1]
 since_last_updated_sec = int(sys.argv[2])
 
@@ -38,12 +40,12 @@ for assignee in unique_assignees:
         inactive_day = int((time.time() - assigned_issue['unix_timestamp_updated']) / 86400)
         assignee_txt += 'Title: {}\n'.format(assigned_issue['issue_title'])
         assignee_txt += 'This issue has been inactive for {:,} days. '.format(inactive_day)
-        assignee_txt += 'As the assignee, you are expected to post an update.\n'
+        assignee_txt += 'As the assignee, you ({}) are expected to post an update.\n'.format(assignee)
         assignee_txt += assigned_issue['issue_url']+'\n\n'
-    print(assignee_txt)
+    #print(assignee_txt)
     assignee_file = 'assignee_{}.txt'.format(assignee)
     f = open(assignee_file, 'w')
     f.write(assignee_txt)
     f.close()
 
-print('End')
+print('Ending write_email_text.py')
