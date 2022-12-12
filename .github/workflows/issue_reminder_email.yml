@@ -16,4 +16,5 @@ jobs:
           # get list of open Issues that haven't been updated in the past week
           #issues=$(git log --since='7 days ago' --author="$GITHUB_ACTOR" --format="%s" | grep -E "#[0-9]+")
           issues=$(git log --author="$GITHUB_ACTOR" --format="%s" | grep -E "#[0-9]+")
+          echo $issues
           echo ${issues[@]}
