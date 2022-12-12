@@ -25,4 +25,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
         run: |
           echo "hoge"
-          hub issue --state open --format "%I %as %ur %t %U"
+          hub issue --state open --format "%I%n%as%n%ur%n%ut%n%t%n%U%n%n"
