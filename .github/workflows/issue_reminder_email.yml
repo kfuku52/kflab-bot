@@ -1,0 +1,36 @@
+name: Reminder Email
+
+on:
+  schedule:
+    #- cron: '0 9 * * 1' # Runs every Monday at 9am
+    - cron: '*/1 * * * *'
+
+jobs:
+  reminder_email:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Get list of Issues
+        run: |
+          # get list of open Issues that haven't been updated in the past week
+          #issues=$(git log --since='7 days ago' --author="$GITHUB_ACTOR" --format="%s" | grep -E "#[0-9]+")
+          issues=$(git log --author="$GITHUB_ACTOR" --format="%s" | grep -E "#[0-9]+")
+
+          # loop through each Issue and get the user(s) tagged to it
+          for issue in $issues; do
+            # extract the Issue number from the commit message
+            issue_num=$(echo $issue | grep -Eo "#[0-9]+" | sed 's/#//')
+
+            # get the list of users tagged to the Issue
+            users=$(git log --format="%b" -1 $issue_num | grep -E "@[a-zA-Z0-9]+" | sed 's/@//g')
+
+            # loop through each user and send a reminder email
+            for user in $users; do
+              # use the evvanErb/get-github-email-by-username-action action to get the user's email address
+              email=$(evvanErb/get-github-email-by-username-action@v1.0.0 -u $user)
+
+              # send the reminder email using the email address
+              echo "Sending reminder email to $email for Issue $issue_num"
+            done
+          done
+
