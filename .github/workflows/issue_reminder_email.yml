@@ -26,6 +26,7 @@ jobs:
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
           
       - name: Installation
+        run: |
           gem install ghi # https://github.com/drazisil/ghi
           
       - name: Get list of Issues
