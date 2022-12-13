@@ -41,7 +41,9 @@ jobs:
           #assignee_names=( `ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//" | sort -u` )
           assignee_names=`ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//" -e "s/[[:space:]]//g" | tr '\n' ',' | sed -e "s/,*$//"`
           echo "assignee names from assignee files: ${assignee_names}"
-          echo "$ASSIGNEE_TXT=$(echo ${assignee_names})" >> $GITHUB_ENV
+          echo "ASSIGNEE_TXT=$(echo ${assignee_names})" >> $GITHUB_ENV
+          echo "done!"
+
       - name: Set variables
         run: |
           echo "YYYYMMDD=$(date '+%Y-%m-%d')" >> $GITHUB_ENV
