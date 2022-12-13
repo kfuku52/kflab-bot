@@ -1,7 +1,8 @@
+import re
 import sys
 import time
 
-print('Starting write_email_text.py')
+print('Starting write_inactive_issue.py')
 
 hub_out_file = sys.argv[1]
 since_last_updated_sec = int(sys.argv[2])
@@ -29,23 +30,21 @@ for i in range(num_open_issue):
 inactive_issues = [ issue for issue in issues if (time.time()-issue['unix_timestamp_updated']) > since_last_updated_sec ]
 print('Number of inactive Issues: {:,}'.format(len(inactive_issues)))
 
-unique_assignees = list(set([ assignee for issue in inactive_issues for assignee in issue['assignees'] if assignee!='' ]))
+unique_assignees = list(set([ assignee.replace(' ', '') for issue in inactive_issues for assignee in issue['assignees'] if assignee!='' ]))
 print('Number of assignees in inactive Issues: {:,}'.format(len(unique_assignees)))
 for assignee in unique_assignees:
     assigned_issues = [ issue for issue in inactive_issues if assignee in issue['assignees'] ]
     assigned_issue_nums = [ issue['issue_number'] for issue in assigned_issues ]
     print('Issues assigned to {}: {}'.format(assignee, ','.join([ str(n) for n in assigned_issue_nums ])))
     assignee_txt = ''
+    assignee_txt += ':wave: Hi @{}, As an assignee, you are expected to post an update in the following inactive issues.\n'.format(assignee)
     for assigned_issue in assigned_issues:
         inactive_day = int((time.time() - assigned_issue['unix_timestamp_updated']) / 86400)
-        assignee_txt += 'Title: {}\n'.format(assigned_issue['issue_title'])
-        assignee_txt += 'This issue has been inactive for {:,} days. '.format(inactive_day)
-        assignee_txt += 'As the assignee, you ({}) are expected to post an update.\n'.format(assignee)
-        assignee_txt += assigned_issue['issue_url']+'\n\n'
-    #print(assignee_txt)
+        assignee_txt += '{} (>{} days), '.format(assigned_issue['issue_url'], inactive_day)
+    assignee_txt = re.sub(', $', '\n\n', assignee_txt)
     assignee_file = 'assignee_{}.txt'.format(assignee)
     f = open(assignee_file, 'w')
     f.write(assignee_txt)
     f.close()
 
-print('Ending write_email_text.py')
+print('Ending write_inactive_issue.py')
