@@ -1,4 +1,7 @@
-name: Reminder Email
+name: forum_issue
+
+env:
+  INACTIVE_SEC: 3600
 
 on:
   workflow_dispatch:
@@ -16,8 +19,7 @@ on:
     - cron: '* * 1 * *'
 
 jobs:
-  reminder_email:
-    name: hoge
+  forum_issue:
     permissions:
       contents: read # https://github.com/actions/checkout/issues/254
       issues: write
@@ -35,13 +37,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
         run: |
           hub issue --state open --format "%I%n%as%n%ur%n%ut%n%t%n%U%n" > hub_out.txt
-          python write_email_text.py hub_out.txt 3600
+          python write_email_text.py hub_out.txt ${{ env.INACTIVE_SEC }}
           assignee_names=( `ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//"` )
           echo "assignee names from assignee files: ${assignee_names[@]}"
           
       - name: Set variables
         run: |
           echo "YYYYMMDD=$(date '+%Y-%m-%d')" >> $GITHUB_ENV
+      
       - name: Read text for inactive issues
         run: |
           INACTIVE_ISSUES=$(cat assignee_*.txt)
@@ -49,21 +52,22 @@ jobs:
           echo "$INACTIVE_ISSUES" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
         id: inactive_issues
+      
       - name: Create monthly forum
         uses: imjohnbo/issue-bot@v3
         with:
           assignees: "kfuku52"
           labels: "weekly_forum"
-          title: "Weekly forum"
+          title: "Weekly forum ${{ env.YYYYMMDD }}"
           body: |-
             :wave: This page serves as a lab forum for the week of ${{ env.YYYYMMDD }} for discussing miscellaneous topics.
             Before start commenting, please tag all current lab members to ensure that everyone receives notifications.
-            Previous weekly forum is {{ previousIssueNumber }}
+            Previous weekly forum is \#{{ previousIssueNumber }}
             
             ${{ env.INACTIVE_ISSUES }}
             
           pinned: true
           close-previous: true
-          linked-comments: true
+          linked-comments: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
