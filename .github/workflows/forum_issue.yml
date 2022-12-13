@@ -67,7 +67,7 @@ jobs:
           close-previous: true
           linked-comments: false
           body: |-
-            :wave: This page serves as a lab forum for the week of ${{ env.YYYYMMDD }} for discussing miscellaneous topics. Only people who already have assigned issues are automatically tagged, but please feel free to add other members to get them notified. This bot does not know the holidays, so sorry if this notification interrupts your vacation. Previous weekly forum is \#{{ previousIssueNumber }} .
+            :wave: This page serves as a lab forum for the week of ${{ env.YYYYMMDD }} for discussing miscellaneous topics. Only people who already have assigned issues are automatically tagged, but please feel free to add other members to get them notified. Please ignore this notification if it interrupts your vacation. Previous weekly forum is \#{{ previousIssueNumber }} .
             
             As assignees, some of you are expected to post an update in the following issues (inactive period in parentheses).
             
