@@ -42,10 +42,13 @@ jobs:
       - name: Set variables
         run: |
           echo "YYYYMMDD=$(date '+%Y-%m-%d')" >> $GITHUB_ENV
-          #echo "INACTIVE_ISSUES<<$(cat assignee_*.txt)" >> $GITHUB_ENV
       - name: Read text for inactive issues
-        id: inactiveissues
-        run: echo "::set-output name=txt::$(cat assignee_*.txt)"
+        run: |
+          INACTIVE_ISSUES=$(cat assignee_*.txt)
+          echo "INACTIVE_ISSUES<<EOF" >> $GITHUB_ENV
+          echo "$INACTIVE_ISSUES" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+        id: inactive_issues
       - name: Create monthly forum
         uses: imjohnbo/issue-bot@v3
         with:
@@ -55,9 +58,9 @@ jobs:
           body: |-
             :wave: This page serves as a lab forum for the week of ${{ env.YYYYMMDD }} for discussing miscellaneous topics.
             Before start commenting, please tag all current lab members to ensure that everyone receives notifications.
-            Previous weekly forum: #{{ previousIssueNumber }}
+            Previous weekly forum is {{ previousIssueNumber }}
             
-            ${{ steps.inactiveissues.outputs.txt }}
+            ${{ env.INACTIVE_ISSUES }}
             
           pinned: true
           close-previous: true
