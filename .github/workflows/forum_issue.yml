@@ -2,6 +2,8 @@ name: forum_issue
 
 env:
   INACTIVE_SEC: 3600
+  TITLE_PREFIX: Weekly forum
+  ISSUE_LABEL: weekly_forum
 
 on:
   workflow_dispatch:
@@ -38,11 +40,9 @@ jobs:
         run: |
           hub issue --state open --format "%I%n%as%n%ur%n%ut%n%t%n%U%n" > hub_out.txt
           python write_inactive_issue.py hub_out.txt ${{ env.INACTIVE_SEC }}
-          #assignee_names=( `ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//" | sort -u` )
           assignee_names=`ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//" -e "s/[[:space:]]//g" | tr '\n' ',' | sed -e "s/,*$//"`
           echo "assignee names from assignee files: ${assignee_names}"
           echo "ASSIGNEE_TXT=$(echo ${assignee_names})" >> $GITHUB_ENV
-          echo "done!"
 
       - name: Set variables
         run: |
@@ -60,15 +60,15 @@ jobs:
         uses: imjohnbo/issue-bot@v3
         with:
           assignees: "${{ env.ASSIGNEE_TXT }}"
-          labels: "weekly_forum"
-          title: "Weekly forum ${{ env.YYYYMMDD }}"
+          labels: "${{ env.ISSUE_LABEL }}"
+          title: "${{ env.TITLE_PREFIX }} ${{ env.YYYYMMDD }}"
           pinned: true
           close-previous: true
           linked-comments: false
           body: |-
-            :wave: This page serves as a lab forum for the week of ${{ env.YYYYMMDD }} for discussing miscellaneous topics.
-            Only people who have assigned issues are tagged by default, but please feel free to add other members to get them notified.
-            Previous weekly forum is \#{{ previousIssueNumber }}
+            :wave: This page serves as a lab forum for the week of ${{ env.YYYYMMDD }} for discussing miscellaneous topics. Only people who already have assigned issues are automatically tagged, but please feel free to add other members to get them notified. This bot does not know the holidays, so sorry if this notification interrupts your vacation. Previous weekly forum is \#{{ previousIssueNumber }} .
+            
+            As assignees, some of you are expected to post an update in the following issues (inactive period in parentheses).
             
             ${{ env.INACTIVE_ISSUES }}
             
