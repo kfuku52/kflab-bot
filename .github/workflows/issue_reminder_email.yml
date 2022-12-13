@@ -13,14 +13,15 @@ on:
         - warning
         - debug
   schedule:
-    - cron: '* 9 * * *'
+    - cron: '* * 1 * *'
 
 jobs:
   reminder_email:
+    permissions:
+      issues: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: evvanErb/get-github-email-by-username-action@v1.25
         with:
           github-username: 'kfuku52' # This is the input username
           token: 'token' # This is an optional input of a PAT to use a more reliable way to get a user's email
@@ -29,8 +30,7 @@ jobs:
         with:
           python-version: '3.9'
           architecture: 'x64'
-      - name: Print the found email
-        run: echo "The email is ${{ steps.test.outputs.email }}" # Example of how to access output email
+      
       - name: Get list of Issues
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
@@ -39,13 +39,26 @@ jobs:
           python write_email_text.py hub_out.txt 3600
           assignee_names=( `ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//"` )
           echo "assignee names from assignee files: ${assignee_names[@]}"
+          echo "ISSUE_TXT=$(cat assignee_*.txt)" >> $GITHUB_ENV 
           
-          # https://stackoverflow.com/questions/73085141/git-shortlog-in-a-github-workflow-for-a-specific-directory
-          #git log | git shortlog -s -n -e 
-          
-          
-          
-          
-          # https://github.com/marketplace/actions/send-email
-
+      - name: Get year and month
+        run: echo "YYYYMM=$(date '+%Y-%m')" >> $GITHUB_ENV      
+      - name: Create monthly forum
+        uses: imjohnbo/issue-bot@v3
+        with:
+          assignees: "kfuku52"
+          labels: "monthly_forum"
+          title: "Monthly forum"
+          body: |-
+            :wave: This page serves as a lab forum in ${{ env.YYYYMM }} for discussing miscellaneous topics.
+            Before start commenting, please tag all current lab members to ensure that everyone receives notifications.
+            Previous monthly forum: #{{ previousIssueNumber }}
+            
+            ${{ env.ISSUE_TXT }}
+            
+          pinned: true
+          close-previous: true
+          linked-comments: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
