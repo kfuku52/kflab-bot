@@ -38,8 +38,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
         run: |
-          hub issue --state open --format "%I%n%as%n%ur%n%ut%n%t%n%U%n" > hub_out.txt
-          python write_inactive_issue.py hub_out.txt ${{ env.INACTIVE_SEC }}
+          hub issue --state open --format "%I%n%as%n%ur%n%ut%n%t%n%U%n%L%n" > hub_out.txt
+          cat hub_out.txt
+          python write_inactive_issue.py hub_out.txt "${{ env.INACTIVE_SEC }}" "${{ env.ISSUE_LABEL }}"
           assignee_names=`ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//" -e "s/[[:space:]]//g" | tr '\n' ',' | sed -e "s/,*$//"`
           echo "assignee names from assignee files: ${assignee_names}"
           echo "ASSIGNEE_TXT=$(echo ${assignee_names})" >> $GITHUB_ENV
