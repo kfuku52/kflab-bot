@@ -19,6 +19,7 @@ jobs:
   reminder_email:
     name: hoge
     permissions:
+      contents: read # https://github.com/actions/checkout/issues/254
       issues: write
     runs-on: ubuntu-latest
     steps:
