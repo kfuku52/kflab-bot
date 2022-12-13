@@ -32,15 +32,16 @@ jobs:
           python-version: '3.9'
           architecture: 'x64'
       
-      - name: Get list of Issues
+      - name: Get issue info
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
         run: |
           hub issue --state open --format "%I%n%as%n%ur%n%ut%n%t%n%U%n" > hub_out.txt
           python write_email_text.py hub_out.txt ${{ env.INACTIVE_SEC }}
-          assignee_names=( `ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//"` )
-          echo "assignee names from assignee files: ${assignee_names[@]}"
-          
+          assignee_names=( `ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//" | sort -u` )
+          ASSIGNEE_TXT=`echo "$(IFS=,; echo "${assignee_names[@]}")"`
+          echo "assignee names from assignee files: ${ASSIGNEE_TXT}"
+          echo "$ASSIGNEE_TXT" >> $GITHUB_ENV
       - name: Set variables
         run: |
           echo "YYYYMMDD=$(date '+%Y-%m-%d')" >> $GITHUB_ENV
@@ -56,9 +57,12 @@ jobs:
       - name: Create monthly forum
         uses: imjohnbo/issue-bot@v3
         with:
-          assignees: "kfuku52"
+          assignees: "${{ env.ASSIGNEE_TXT }}"
           labels: "weekly_forum"
           title: "Weekly forum ${{ env.YYYYMMDD }}"
+          pinned: true
+          close-previous: true
+          linked-comments: false
           body: |-
             :wave: This page serves as a lab forum for the week of ${{ env.YYYYMMDD }} for discussing miscellaneous topics.
             Before start commenting, please tag all current lab members to ensure that everyone receives notifications.
@@ -66,8 +70,5 @@ jobs:
             
             ${{ env.INACTIVE_ISSUES }}
             
-          pinned: true
-          close-previous: true
-          linked-comments: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
