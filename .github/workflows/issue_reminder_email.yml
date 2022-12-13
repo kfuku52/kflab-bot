@@ -42,7 +42,10 @@ jobs:
       - name: Set variables
         run: |
           echo "YYYYMMDD=$(date '+%Y-%m-%d')" >> $GITHUB_ENV
-          echo "INACTIVE_ISSUES<<$(cat assignee_*.txt)" >> $GITHUB_ENV
+          #echo "INACTIVE_ISSUES<<$(cat assignee_*.txt)" >> $GITHUB_ENV
+      - name: Read text for inactive issues
+        id: inactiveissues
+        run: echo "::set-output name=txt::$(cat assignee_*.txt)"
       - name: Create monthly forum
         uses: imjohnbo/issue-bot@v3
         with:
@@ -54,7 +57,7 @@ jobs:
             Before start commenting, please tag all current lab members to ensure that everyone receives notifications.
             Previous weekly forum: #{{ previousIssueNumber }}
             
-            ${{ env.INACTIVE_ISSUES }}
+            ${{ steps.inactiveissues.outputs.txt }}
             
           pinned: true
           close-previous: true
