@@ -52,7 +52,7 @@ jobs:
             Before start commenting, please tag all current lab members to ensure that everyone receives notifications.
             Previous monthly forum: {{#previousIssueNumber}}
             
-            $(cat assignee_*.txt)
+            #$(cat assignee_*.txt)
             
           pinned: true
           close-previous: true
