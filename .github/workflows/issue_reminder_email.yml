@@ -22,9 +22,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-        with:
-          github-username: 'kfuku52' # This is the input username
-          token: 'token' # This is an optional input of a PAT to use a more reliable way to get a user's email
       - name: Setup Python
         uses: actions/setup-python@v2
         with:
