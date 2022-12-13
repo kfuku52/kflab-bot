@@ -31,6 +31,7 @@ for i in range(num_open_issue):
     issues[i]['labels'] = hub_items[i*num_item+6].split(', ')
 
 inactive_issues = [ issue for issue in issues if (time.time()-issue['unix_timestamp_updated']) > since_last_updated_sec ]
+inactive_issues = [ issue for issue in inactive_issues if remove_label not in issue['labels'] ]
 print('Number of inactive Issues: {:,}'.format(len(inactive_issues)))
 
 unique_assignees = list(set([ assignee.replace(' ', '') for issue in inactive_issues for assignee in issue['assignees'] if assignee!='' ]))
