@@ -40,7 +40,7 @@ jobs:
           echo "assignee names from assignee files: ${assignee_names[@]}"
           
       - name: Get year and month
-        run: echo "YYYYMM=$(date '+%Y-%m')" >> $GITHUB_ENV      
+        run: echo "YYYYMMDD=$(date '+%Y-%m-%d')" >> $GITHUB_ENV      
       - name: Create monthly forum
         uses: imjohnbo/issue-bot@v3
         with:
@@ -48,9 +48,9 @@ jobs:
           labels: "monthly_forum"
           title: "Monthly forum"
           body: |-
-            :wave: This page serves as a lab forum in ${{ env.YYYYMM }} for discussing miscellaneous topics.
+            :wave: This page serves as a lab forum for the week of ${{ env.YYYYMMDD }} for discussing miscellaneous topics.
             Before start commenting, please tag all current lab members to ensure that everyone receives notifications.
-            Previous monthly forum: #{{ previousIssueNumber }}
+            Previous monthly forum: {{#previousIssueNumber}}
             
             $(cat assignee_*.txt)
             
