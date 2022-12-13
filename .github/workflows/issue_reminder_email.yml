@@ -50,7 +50,7 @@ jobs:
           body: |-
             :wave: This page serves as a lab forum for the week of ${{ env.YYYYMMDD }} for discussing miscellaneous topics.
             Before start commenting, please tag all current lab members to ensure that everyone receives notifications.
-            Previous monthly forum: {{#previousIssueNumber}}
+            Previous monthly forum: {{ previousIssueNumber }}
             
             #$(cat assignee_*.txt)
             
