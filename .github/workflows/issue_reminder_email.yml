@@ -39,20 +39,22 @@ jobs:
           assignee_names=( `ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//"` )
           echo "assignee names from assignee files: ${assignee_names[@]}"
           
-      - name: Get year and month
-        run: echo "YYYYMMDD=$(date '+%Y-%m-%d')" >> $GITHUB_ENV      
+      - name: Set variables
+        run: |
+          echo "YYYYMMDD=$(date '+%Y-%m-%d')" >> $GITHUB_ENV
+          echo "INACTIVE_ISSUES=$(cat assignee_*.txt)" >> $GITHUB_ENV
       - name: Create monthly forum
         uses: imjohnbo/issue-bot@v3
         with:
           assignees: "kfuku52"
-          labels: "monthly_forum"
-          title: "Monthly forum"
+          labels: "weekly_forum"
+          title: "Weekly forum"
           body: |-
             :wave: This page serves as a lab forum for the week of ${{ env.YYYYMMDD }} for discussing miscellaneous topics.
             Before start commenting, please tag all current lab members to ensure that everyone receives notifications.
-            Previous monthly forum: {{ previousIssueNumber }}
+            Previous weekly forum: #{{ previousIssueNumber }}
             
-            #$(cat assignee_*.txt)
+            ${{ env.INACTIVE_ISSUES }}
             
           pinned: true
           close-previous: true
