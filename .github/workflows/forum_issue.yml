@@ -38,7 +38,7 @@ jobs:
         run: |
           hub issue --state open --format "%I%n%as%n%ur%n%ut%n%t%n%U%n" > hub_out.txt
           cat hub_out.txt
-          python write_email_text.py hub_out.txt ${{ env.INACTIVE_SEC }}
+          python write_inactive_issue.py hub_out.txt ${{ env.INACTIVE_SEC }}
           #assignee_names=( `ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//" | sort -u` )
           assignee_names=`ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//" -e "s/[[:space:]]/,/g"`
           echo "assignee names from assignee files: ${assignee_names}"
