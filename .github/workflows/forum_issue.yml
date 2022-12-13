@@ -38,10 +38,10 @@ jobs:
         run: |
           hub issue --state open --format "%I%n%as%n%ur%n%ut%n%t%n%U%n" > hub_out.txt
           python write_email_text.py hub_out.txt ${{ env.INACTIVE_SEC }}
-          assignee_names=( `ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//" | sort -u` )
-          ASSIGNEE_TXT=`echo "$(IFS=,; echo "${assignee_names[@]}")"`
-          echo "assignee names from assignee files: ${ASSIGNEE_TXT}"
-          echo "$ASSIGNEE_TXT" >> $GITHUB_ENV
+          #assignee_names=( `ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//" | sort -u` )
+          assignee_names=`ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//" -e "s/[[:space:]]/,/g"`
+          echo "assignee names from assignee files: ${assignee_names}"
+          echo "$ASSIGNEE_TXT=$(echo ${assignee_names})" >> $GITHUB_ENV
       - name: Set variables
         run: |
           echo "YYYYMMDD=$(date '+%Y-%m-%d')" >> $GITHUB_ENV
