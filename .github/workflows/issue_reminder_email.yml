@@ -36,7 +36,7 @@ jobs:
           assignee_names=( `ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//"` )
           echo "assignee names from assignee files: ${assignee_names[@]}"
           
-          git shortlog -s -n -e
+          git log | git shortlog -s -n -e # https://stackoverflow.com/questions/73085141/git-shortlog-in-a-github-workflow-for-a-specific-directory
           
           # https://github.com/marketplace/actions/get-github-email-from-username
           
