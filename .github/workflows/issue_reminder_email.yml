@@ -38,7 +38,6 @@ jobs:
           python write_email_text.py hub_out.txt 3600
           assignee_names=( `ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//"` )
           echo "assignee names from assignee files: ${assignee_names[@]}"
-          echo "ISSUE_TXT=$(cat assignee_*.txt)" >> $GITHUB_ENV 
           
       - name: Get year and month
         run: echo "YYYYMM=$(date '+%Y-%m')" >> $GITHUB_ENV      
@@ -53,7 +52,7 @@ jobs:
             Before start commenting, please tag all current lab members to ensure that everyone receives notifications.
             Previous monthly forum: #{{ previousIssueNumber }}
             
-            ${{ env.ISSUE_TXT }}
+            $(cat assignee_*.txt)
             
           pinned: true
           close-previous: true
