@@ -34,7 +34,7 @@ jobs:
           python-version: '3.9'
           architecture: 'x64'
       
-      - name: Get issue info
+      - name: Get issue info and set variables
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
         run: |
@@ -44,12 +44,10 @@ jobs:
           assignee_names=`ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//" -e "s/[[:space:]]//g" | tr '\n' ',' | sed -e "s/,*$//"`
           echo "assignee names from assignee files: ${assignee_names}"
           echo "ASSIGNEE_TXT=$(echo ${assignee_names})" >> $GITHUB_ENV
-          echo "NUM_CLOSE_ISSUE=$(hub issue --state close --format "%I%n" | wc -l | sed -e "s/[[:space:]]*//")" >> $GITHUB_ENV
-
-      - name: Set variables
-        run: |
           echo "YYYYMMDD=$(date '+%Y-%m-%d')" >> $GITHUB_ENV
-      
+          echo "NUM_CLOSE_ISSUE=$(hub issue --state closed --format "%I%n" | wc -l | sed -e "s/[[:space:]]*//")" >> $GITHUB_ENV
+          echo "CLOSE_ISSUE_LINK=[${{ env.NUM_CLOSE_ISSUE }} issues]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/issues?q=is%3Aissue+is%3Aclose)"
+          echo "OPEN_ISSUE_LINK=[open issues]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/issues)" >> $GITHUB_ENV
       - name: Read text for inactive issues
         run: |
           INACTIVE_ISSUES=$(cat assignee_*.txt)
@@ -68,9 +66,9 @@ jobs:
           close-previous: true
           linked-comments: false
           body: |-
-            :wave: This is a lab forum for the week of ${{ env.YYYYMMDD }} for reporting and discussing miscellaneous topics. Only people who have already been assigned to other [open issues]\($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/issues\) are automatically tagged here, but please feel free to add other members to get them notified. Please ignore this notification if it interrupts your vacation. Feature requests for this bot should be submitted [here](https://github.com/kfuku52/kflab-bot/issues). Previous weekly forum is \#{{ previousIssueNumber }} .
+            :wave: This is a lab forum for the week of ${{ env.YYYYMMDD }} for reporting and discussing miscellaneous topics. Only people who have already been assigned to other ${{ env.OPEN_ISSUE_LINK }} are automatically tagged here, but please feel free to add other members to get them notified. Please ignore this notification if it interrupts your vacation. Feature requests for this bot should be submitted [here](https://github.com/kfuku52/kflab-bot/issues). Previous weekly forum is \#{{ previousIssueNumber }} .
             
-            As assignees, some of you are expected to post a recent update in the following issues (inactive period in parentheses). Please check the list, and whenever possible, close the issues with a conclusive post. So far, we have successfully closed [${{ env.NUM_CLOSE_ISSUE }} issues]\($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/issues?q=is%3Aissue+is%3Aclose\) :tada: Thank you for your continued contributions to let our lab keep running:thumbsup:
+            As assignees, some of you are expected to post a recent update in the following issues (inactive period in parentheses). Please check the list, and whenever possible, close the issues with a conclusive post. So far, we have successfully closed ${{ env.CLOSE_ISSUE_LINK }} :tada: Thank you for your continued contributions to let our lab keep running:thumbsup:
             
             ${{ env.INACTIVE_ISSUES }}
             
