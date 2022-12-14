@@ -69,7 +69,7 @@ jobs:
           body: |-
             :wave: This is a lab forum for the week of ${{ env.YYYYMMDD }} for reporting and discussing miscellaneous topics. Only people who have already been assigned to other ${{ env.OPEN_ISSUE_LINK }} are automatically tagged here, but please feel free to add other members to get them notified. Please ignore this notification if it interrupts your vacation. Feature requests for this bot should be submitted [here](https://github.com/kfuku52/kflab-bot/issues). Previous weekly forum is \#{{ previousIssueNumber }} .
             
-            As assignees, some of you are expected to post a recent update in the following issues (inactive period in parentheses). Please check the list, and whenever possible, close the issues with a conclusive post. So far, we have successfully closed ${{ env.CLOSE_ISSUE_LINK }} :tada: Thank you for your contributions to let our lab keep running :thumbsup:
+            As assignees, some of you are expected to post recent updates in the following issues (inactive period in parentheses). Please check the list, and whenever possible, close the issues with a conclusive post. If you feel you are no longer the most qualified personnel for the task, please consult with others about taking over. So far, we have successfully closed ${{ env.CLOSE_ISSUE_LINK }} :tada: Thank you for your contributions to let our lab keep running :thumbsup:
             
             ${{ env.INACTIVE_ISSUES }}
             
