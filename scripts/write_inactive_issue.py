@@ -5,8 +5,11 @@ import time
 print('Starting write_inactive_issue.py')
 
 hub_out_file = sys.argv[1]
-since_last_updated_sec = int(sys.argv[2])
+since_last_updated_day = int(sys.argv[2])
 remove_label = sys.argv[3]
+repo_url = sys.argv[4]
+
+since_last_updated_sec = since_last_updated_day * 86400
 
 with open(hub_out_file, 'r') as f:
     hub_txt = f.read()
@@ -40,11 +43,12 @@ for assignee in unique_assignees:
     assigned_issues = [ issue for issue in inactive_issues if assignee in issue['assignees'] ]
     assigned_issue_nums = [ issue['issue_number'] for issue in assigned_issues ]
     print('Issues assigned to {}: {}'.format(assignee, ','.join([ str(n) for n in assigned_issue_nums ])))
+    assigned_open_issue_url = repo_url+'/issues?q=assignee%3A'+assignee+'+is%3Aopen'
     assignee_txt = ''
-    assignee_txt += ':wave: @{}: '.format(assignee)
+    assignee_txt += '@{} ([assigned open issues]({})): '.format(assignee, assigned_open_issue_url)
     for assigned_issue in assigned_issues:
         inactive_day = int((time.time() - assigned_issue['unix_timestamp_updated']) / 86400)
-        assignee_txt += '{} (>{} days), '.format(assigned_issue['issue_url'], inactive_day)
+        assignee_txt += '{} ({} days), '.format(assigned_issue['issue_url'], inactive_day)
     assignee_txt = re.sub(', $', '\n\n', assignee_txt)
     assignee_file = 'assignee_{}.txt'.format(assignee)
     f = open(assignee_file, 'w')
