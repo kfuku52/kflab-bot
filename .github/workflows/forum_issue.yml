@@ -40,7 +40,7 @@ jobs:
         run: |
           hub issue --state open --format "%I%n%as%n%ur%n%ut%n%t%n%U%n%L%n" > hub_out.txt
           cat hub_out.txt
-          python ./scripts/write_inactive_issue.py hub_out.txt "${{ env.INACTIVE_DAYS }}" "${{ env.ISSUE_LABEL }}" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+          python ./scripts/write_issue_report.py hub_out.txt "${{ env.INACTIVE_DAYS }}" "${{ env.ISSUE_LABEL }}" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
           assignee_names=`ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//" -e "s/[[:space:]]//g" | tr '\n' ',' | sed -e "s/,*$//"`
           echo "assignee names from assignee files: ${assignee_names}"
           echo "ASSIGNEE_TXT=$(echo ${assignee_names})" >> $GITHUB_ENV
