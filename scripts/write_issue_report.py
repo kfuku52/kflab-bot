@@ -2,7 +2,7 @@ import re
 import sys
 import time
 
-print('Starting write_inactive_issue.py')
+print('Starting write_issue_report.py')
 
 hub_out_file = sys.argv[1]
 since_last_updated_day = int(sys.argv[2])
@@ -39,23 +39,36 @@ print('Number of inactive Issues: {:,}'.format(len(inactive_issues)))
 
 unique_assignees = list(set([ assignee.replace(' ', '') for issue in inactive_issues for assignee in issue['assignees'] if assignee!='' ]))
 print('Number of assignees in inactive Issues: {:,}'.format(len(unique_assignees)))
+issue_txt = '### Issue summary\n'
+issue_txt += 'The following lists include the issues that have been inactive for more than {:,} days.\n\n'.format(since_last_updated_day)
 for assignee in unique_assignees:
     assigned_issues = [ issue for issue in inactive_issues if assignee in issue['assignees'] ]
     assigned_issue_nums = [ issue['issue_number'] for issue in assigned_issues ]
     print('Issues assigned to {}: {}'.format(assignee, ','.join([ str(n) for n in assigned_issue_nums ])))
     assigned_open_issue_url = repo_url+'/issues?q=assignee%3A'+assignee+'+is%3Aopen'
     mentioned_unassigned_open_issue_url = repo_url+'/issues?q=-assignee%3A'+assignee+'+mentions%3A'+assignee+'+is%3Aopen'
-    assignee_txt = ''
-    assignee_txt += '@{}: '.format(assignee)
+    issue_txt += '@{}: '.format(assignee)
     for assigned_issue in assigned_issues:
         inactive_day = int((time.time() - assigned_issue['unix_timestamp_updated']) / 86400)
-        assignee_txt += '{} ({} days), '.format(assigned_issue['issue_url'], inactive_day)
-    assignee_txt += '[List of assigned open issues]({}), '.format(assigned_open_issue_url)
-    assignee_txt += '[List of open issues where you are not assigned but mentioned]({})'.format(mentioned_unassigned_open_issue_url)
-    assignee_txt += '\n\n'
-    assignee_file = 'assignee_{}.txt'.format(assignee)
-    f = open(assignee_file, 'w')
-    f.write(assignee_txt)
-    f.close()
+        issue_txt += '{} ({} days), '.format(assigned_issue['issue_url'], inactive_day)
+    issue_txt += '[List of assigned open issues]({}), '.format(assigned_open_issue_url)
+    issue_txt += '[List of open issues where you are not assigned but mentioned]({})'.format(mentioned_unassigned_open_issue_url)
+    issue_txt += '\n\n'
 
-print('Ending write_inactive_issue.py')
+unassigned_issues = [ issue for issue in issues if issue['assignees'][0]=='' ]
+if len(unassigned_issues)==0:
+    issue_txt += 'There is no unassigned issue.\n'
+else:
+    txt = 'There are {} unassigned issues. If anyone is willing to voluntarily take care of these, it would be very helpful: '
+    issue_txt += txt.format(len(unassigned_issues))
+    for unassigned_issue in unassigned_issues:
+        inactive_day = int((time.time() - unassigned_issue['unix_timestamp_updated']) / 86400)
+        issue_txt += '{} ({} days), '.format(unassigned_issue['issue_url'], inactive_day)
+issue_txt = re.sub(', $', '\n\n', issue_txt)
+
+out_file = 'issue_report.txt'
+f = open(out_file, 'w')
+f.write(issue_txt)
+f.close()
+
+print('Ending write_issue_report.py')

@@ -51,9 +51,9 @@ jobs:
           echo "OPEN_ISSUE_LINK=[open issues]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/issues)" >> $GITHUB_ENV
       - name: Read text for inactive issues
         run: |
-          INACTIVE_ISSUES=$(cat assignee_*.txt)
-          echo "INACTIVE_ISSUES<<EOF" >> $GITHUB_ENV
-          echo "$INACTIVE_ISSUES" >> $GITHUB_ENV
+          ISSUE_REPORT_TXT=$(cat issue_report.txt)
+          echo "ISSUE_REPORT_TXT<<EOF" >> $GITHUB_ENV
+          echo "$ISSUE_REPORT_TXT" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
         id: inactive_issues
       
@@ -73,7 +73,7 @@ jobs:
             
             As assignees, some of you are expected to post recent updates in the following issues (inactive period in parentheses). Please check the list, and whenever possible, close the issues with a conclusive post. If you feel you are no longer the most qualified personnel for the task, please consult with others about taking over. So far, we have successfully closed ${{ env.CLOSE_ISSUE_LINK }} :tada: Thank you for your contributions to let our lab keep running :thumbsup:
             
-            ${{ env.INACTIVE_ISSUES }}
+            ${{ env.ISSUE_REPORT_TXT }}
             
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
