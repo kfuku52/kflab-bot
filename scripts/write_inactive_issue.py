@@ -44,12 +44,15 @@ for assignee in unique_assignees:
     assigned_issue_nums = [ issue['issue_number'] for issue in assigned_issues ]
     print('Issues assigned to {}: {}'.format(assignee, ','.join([ str(n) for n in assigned_issue_nums ])))
     assigned_open_issue_url = repo_url+'/issues?q=assignee%3A'+assignee+'+is%3Aopen'
+    mentioned_unassigned_open_issue_url = repo_url+'/issues?q=-assignee%3A'+assignee+'+mentions%3A'+assignee+'+is%3Aopen'
     assignee_txt = ''
-    assignee_txt += '@{} ([assigned open issues]({})): '.format(assignee, assigned_open_issue_url)
+    assignee_txt += '@{}: '.format(assignee)
     for assigned_issue in assigned_issues:
         inactive_day = int((time.time() - assigned_issue['unix_timestamp_updated']) / 86400)
         assignee_txt += '{} ({} days), '.format(assigned_issue['issue_url'], inactive_day)
-    assignee_txt = re.sub(', $', '\n\n', assignee_txt)
+    assignee_txt += '[List of assigned open issues]({}), '.format(assigned_open_issue_url)
+    assignee_txt += '[List of open issues where you are not assigned but mentioned]({})'.format(mentioned_unassigned_open_issue_url)
+    assignee_txt += '\n\n'
     assignee_file = 'assignee_{}.txt'.format(assignee)
     f = open(assignee_file, 'w')
     f.write(assignee_txt)
