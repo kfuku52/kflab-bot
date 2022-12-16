@@ -49,6 +49,7 @@ jobs:
           echo "NUM_CLOSE_ISSUE=$(echo ${num_close_issue})" >> $GITHUB_ENV
           echo "CLOSE_ISSUE_LINK=[${num_close_issue} issues]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/issues?q=is%3Aissue+is%3Aclosed)" >> $GITHUB_ENV
           echo "OPEN_ISSUE_LINK=[open issues]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/issues)" >> $GITHUB_ENV
+      
       - name: Read text for inactive issues
         run: |
           ISSUE_REPORT_TXT=$(cat issue_report.txt)
@@ -57,7 +58,7 @@ jobs:
           echo "EOF" >> $GITHUB_ENV
         id: inactive_issues
       
-      - name: Create monthly forum
+      - name: Renew forum issue
         uses: imjohnbo/issue-bot@v3
         with:
           assignees: "${{ env.ASSIGNEE_TXT }}"
