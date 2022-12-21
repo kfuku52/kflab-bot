@@ -27,9 +27,9 @@ jobs:
       issues: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v3 # https://github.com/actions/checkout
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v2 # https://github.com/actions/setup-python
         with:
           python-version: '3.9'
           architecture: 'x64'
@@ -59,7 +59,7 @@ jobs:
         id: inactive_issues
       
       - name: Renew forum issue
-        uses: imjohnbo/issue-bot@v3
+        uses: imjohnbo/issue-bot@v3 # https://github.com/imjohnbo/issue-bot
         with:
           assignees: "${{ env.ASSIGNEE_TXT }}"
           labels: "${{ env.ISSUE_LABEL }}"
