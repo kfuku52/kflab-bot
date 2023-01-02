@@ -4,6 +4,7 @@ env:
   INACTIVE_DAYS: 0 # Number of days since the last update to get reported as an inactive issue
   TITLE_PREFIX: Weekly forum # Issue title, followed by the date of Issue creation
   ISSUE_LABEL: weekly_forum # Label of this Issue series. This label must be exclusively used.
+  ISSUE_HYPERLINK: 1 # Generating direct hyperlinks to Issues (1) or not (0). If set to 0, no issue referencing is generated from the forum issues.
 
 on:
   schedule:
@@ -40,7 +41,7 @@ jobs:
         run: |
           hub issue --state open --format "%I%n%as%n%ur%n%ut%n%t%n%U%n%L%n" > hub_out.txt
           cat hub_out.txt
-          python ./scripts/write_issue_report.py hub_out.txt "${{ env.INACTIVE_DAYS }}" "${{ env.ISSUE_LABEL }}" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+          python ./scripts/write_issue_report.py hub_out.txt "${{ env.INACTIVE_DAYS }}" "${{ env.ISSUE_LABEL }}" "${{ env.ISSUE_HYPERLINK }}" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
           assignee_names=`ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//" -e "s/[[:space:]]//g" | tr '\n' ',' | sed -e "s/,*$//"`
           echo "assignee names from assignee files: ${assignee_names}"
           echo "ASSIGNEE_TXT=$(cat unique_assignees.txt)" >> $GITHUB_ENV
