@@ -1,13 +1,15 @@
 import re
 import sys
 import time
+from distutils.util import strtobool
 
 print('Starting write_issue_report.py')
 
 hub_out_file = sys.argv[1]
 since_last_updated_day = int(sys.argv[2])
 remove_label = sys.argv[3]
-repo_url = sys.argv[4]
+generate_issue_hyperlink = strtobool(sys.argv[4])
+repo_url = sys.argv[5]
 
 since_last_updated_sec = since_last_updated_day * 86400
 
@@ -32,6 +34,10 @@ for i in range(num_open_issue):
     issues[i]['issue_title'] = hub_items[i*num_item+4]
     issues[i]['issue_url'] = hub_items[i*num_item+5]
     issues[i]['labels'] = hub_items[i*num_item+6].split(', ')
+if not generate_issue_hyperlink:
+    print('Issue hyperlinks will not be generated.')
+    for i in range(len(issues)):
+        issues[i]['issue_url'] = re.sub('.*/', '\#', issues[i]['issue_url'])
 
 inactive_issues = [ issue for issue in issues if (time.time()-issue['unix_timestamp_updated']) > since_last_updated_sec ]
 inactive_issues = [ issue for issue in inactive_issues if remove_label not in issue['labels'] ]
