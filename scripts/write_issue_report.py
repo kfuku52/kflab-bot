@@ -37,7 +37,8 @@ for i in range(num_open_issue):
 if not generate_issue_hyperlink:
     print('Issue hyperlinks will not be generated.')
     for i in range(len(issues)):
-        issues[i]['issue_url'] = re.sub('.*/', '\#', issues[i]['issue_url'])
+        # https://github.com/hackmdio/hackmd-io-issues/issues/261
+        issues[i]['issue_url'] = re.sub('.*/', '#<span/>', issues[i]['issue_url'])
 
 inactive_issues = [ issue for issue in issues if (time.time()-issue['unix_timestamp_updated']) > since_last_updated_sec ]
 inactive_issues = [ issue for issue in inactive_issues if remove_label not in issue['labels'] ]
