@@ -4,7 +4,7 @@ env:
   INACTIVE_DAYS: 0 # Number of days since the last update to get reported as an inactive issue
   TITLE_PREFIX: Weekly forum # Issue title, followed by the date of Issue creation
   ISSUE_LABEL: weekly_forum # Label of this Issue series. This label must be exclusively used.
-  ISSUE_HYPERLINK: yes # Generating direct hyperlinks to Issues (yes) or not (no). If set to "no", no issue referencing is generated from the forum issues.
+  ISSUE_HYPERLINK: no # Generating direct hyperlinks to Issues (yes) or not (no). If set to "no", no issue referencing is generated from the forum issues.
 
 on:
   schedule:
