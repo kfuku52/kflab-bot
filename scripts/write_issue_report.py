@@ -1,4 +1,7 @@
+import datetime
+import json
 import re
+import subprocess
 import sys
 import time
 from distutils.util import strtobool
@@ -51,6 +54,45 @@ f = open('unique_assignees.txt', 'w')
 f.write(unique_assignee_txt)
 f.close()
 
+# Member-wise contributions in the last X days
+num_day = 7
+today = datetime.datetime.today()
+today_str = today.strftime('%Y-%m-%d')
+startday = datetime.datetime.now() - datetime.timedelta(days=num_day)
+startday_str = startday.strftime('%Y-%m-%d')
+gh_command1 = ['gh', 'issue', 'list', '--limit', str(1000), '--state', 'all', '--search', '"updated:{}..{}"'.format(startday_str, today_str)]
+gh_command1_str = ' '.join(gh_command1)
+print('gh command: {}'.format(gh_command1_str))
+gh_out1 = subprocess.run(gh_command1_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+recent_issue_nums = re.sub('\t.*', '', gh_out1.stdout.decode('utf8')).split('\n')
+recent_issue_nums = sorted([ int(rin) for rin in recent_issue_nums if rin!='' ])
+print('Issues updated in the last {:,} days: {}'.format(num_day, ', '.join([ str(r) for r in recent_issue_nums ])))
+time_pattern = '%Y-%m-%dT%H:%M:%SZ'
+recent_contributions = dict()
+for assignee in unique_assignees:
+    recent_contributions[assignee] = dict()
+    recent_contributions[assignee]['issue_numbers'] = list()
+    recent_contributions[assignee]['timestamps'] = list()
+for issue_num in recent_issue_nums:
+    gh_command2 = ['gh', 'issue', 'view', str(issue_num), '--json', 'assignees,author,body,closed,closedAt,comments,createdAt,id,labels,milestone,number,projectCards,reactionGroups,state,title,updatedAt,url']
+    gh_command2_str = ' '.join(gh_command2)
+    gh_out2 = subprocess.run(gh_command2_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    issue = json.loads(gh_out2.stdout.decode('utf8'))
+    issue_created_at = datetime.datetime.strptime(issue['createdAt'], time_pattern)
+    issue_author = issue['author']['login']
+    if (issue_created_at > startday)&(issue_author in recent_contributions.keys()):
+        recent_contributions[issue_author]['issue_numbers'].append(issue_num)
+        recent_contributions[issue_author]['timestamps'].append(issue_created_at)
+    for comment in issue['comments']:
+        comment_created_at = datetime.datetime.strptime(comment['createdAt'], time_pattern)
+        comment_author = comment['author']['login']
+        if (comment_created_at > startday)&(comment_author in recent_contributions.keys()):
+            recent_contributions[comment_author]['issue_numbers'].append(issue_num)
+            recent_contributions[comment_author]['timestamps'].append(comment_created_at)
+for assignee in unique_assignees:
+    recent_contributions[assignee]['num_issue'] = len(set(recent_contributions[assignee]['issue_numbers']))
+    recent_contributions[assignee]['num_comment'] = len(recent_contributions[assignee]['issue_numbers'])
+
 issue_txt = '### Issue summary\n'
 issue_txt += 'The following lists include the issues that have been inactive for more than {:,} days.\n\n'.format(since_last_updated_day)
 for assignee in unique_assignees:
@@ -68,6 +110,8 @@ for assignee in unique_assignees:
     issue_txt += txt.format(assignee, assigned_open_issue_url)
     txt = '[List of open issues where @{} is not assigned but mentioned]({})\n'
     issue_txt += txt.format(assignee, mentioned_unassigned_open_issue_url)
+    txt = 'Thank you for your {:,} contributions on {:,} issues in the last {:,} days!\n'
+    issue_txt += txt.format(recent_contributions[assignee]['num_comment'], recent_contributions[assignee]['num_issue'], num_day)
     issue_txt += '\n'
 
 unassigned_issues = [ issue for issue in issues if issue['assignees'][0]=='' ]
