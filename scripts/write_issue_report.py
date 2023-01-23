@@ -77,6 +77,7 @@ for issue_num in recent_issue_nums:
     gh_command2 = ['gh', 'issue', 'view', str(issue_num), '--json', 'assignees,author,body,closed,closedAt,comments,createdAt,id,labels,milestone,number,projectCards,reactionGroups,state,title,updatedAt,url']
     gh_command2_str = ' '.join(gh_command2)
     gh_out2 = subprocess.run(gh_command2_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    print('gh output: {}'.format(gh_out2))
     issue = json.loads(gh_out2.stdout.decode('utf8'))
     issue_created_at = datetime.datetime.strptime(issue['createdAt'], time_pattern)
     issue_author = issue['author']['login']

@@ -25,6 +25,7 @@ jobs:
   forum_issue:
     permissions:
       contents: read # https://github.com/actions/checkout/issues/254
+      repository-projects: read # https://github.com/cli/cli/issues/6274
       issues: write
     runs-on: ubuntu-latest
     steps:
