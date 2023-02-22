@@ -81,6 +81,6 @@ jobs:
       - name: Remove tags in the previous issue
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        uses: imjohnbo/issue-bot@v3 # https://github.com/imjohnbo/issue-bot
         run: |
-            gh issue edit #{{ previousIssueNumber }} --remove-assignee ${{ env.ASSIGNEE_TXT }}
+          previous_issue_num=`gh issue list --label "${{ env.ISSUE_LABEL }}" --state closed | head -n 1 | sed -e "s/[[:space:]].*//"`
+          gh issue edit ${previous_issue_num} --remove-assignee ${{ env.ASSIGNEE_TXT }}
