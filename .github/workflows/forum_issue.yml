@@ -40,7 +40,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
         run: |
-          gh issue list --state open --json number,assignees,url,updatedAt,title,labels --jq '.[] | "\(.number)\n\(.assignees[0].login)\n\(.url)\n\(.updatedAt)\n\(.title)\n\(.labels[].name)\n"' > gh_out.txt
+          gh issue list --state open --limit 1000 --json number,assignees,url,updatedAt,title,labels --jq '.[] | "\(.number)\n\([.assignees[].login] | join(", "))\n\(.url)\n\(.updatedAt)\n\(.title)\n\(.labels[].name)\n"' > gh_out.txt
           cat gh_out.txt
           python ./scripts/write_issue_report.py gh_out.txt "${{ env.INACTIVE_DAYS }}" "${{ env.ISSUE_LABEL }}" "${{ env.ISSUE_HYPERLINK }}" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
           assignee_names=`ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//" -e "s/[[:space:]]//g" | tr '\n' ',' | sed -e "s/,*$//"`
