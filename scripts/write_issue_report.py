@@ -23,7 +23,7 @@ hub_items = hub_txt.split('\n')
 if hub_items[len(hub_items)-1]=='':
     hub_items = hub_items[0:(len(hub_items)-1)]
 
-num_item = 7
+num_item = 8
 num_open_issue = int(len(hub_items)/num_item)
 print('Number of open Issues: {:,}'.format(num_open_issue))
 
