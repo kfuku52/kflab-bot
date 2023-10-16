@@ -47,7 +47,7 @@ jobs:
           echo "assignee names from assignee files: ${assignee_names}"
           echo "ASSIGNEE_TXT=$(cat unique_assignees.txt)" >> $GITHUB_ENV
           echo "YYYYMMDD=$(date '+%Y-%m-%d')" >> $GITHUB_ENV
-          num_close_issue=$(hub issue --state closed --format "%I%n" | wc -l | sed -e "s/[[:space:]]*//")
+          num_close_issue=$(gh issue list --state closed --json number | grep -o '"number":' | wc -l | tr -d '[:space:]')
           echo "NUM_CLOSE_ISSUE=$(echo ${num_close_issue})" >> $GITHUB_ENV
           echo "CLOSE_ISSUE_LINK=[${num_close_issue} issues]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/issues?q=is%3Aissue+is%3Aclosed)" >> $GITHUB_ENV
           echo "OPEN_ISSUE_LINK=[open issues]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/issues)" >> $GITHUB_ENV
