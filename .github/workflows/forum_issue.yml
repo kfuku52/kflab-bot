@@ -47,10 +47,11 @@ jobs:
           echo "assignee names from assignee files: ${assignee_names}"
           echo "ASSIGNEE_TXT=$(cat unique_assignees.txt)" >> $GITHUB_ENV
           echo "YYYYMMDD=$(date '+%Y-%m-%d')" >> $GITHUB_ENV
+          num_open_issue=$(gh issue list --state open --json number | grep -o '"number":' | wc -l | tr -d '[:space:]')
           num_close_issue=$(gh issue list --state closed --json number | grep -o '"number":' | wc -l | tr -d '[:space:]')
           echo "NUM_CLOSE_ISSUE=$(echo ${num_close_issue})" >> $GITHUB_ENV
+          echo "OPEN_ISSUE_LINK=[${num_open_issue} open issues]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/issues)" >> $GITHUB_ENV
           echo "CLOSE_ISSUE_LINK=[${num_close_issue} issues]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/issues?q=is%3Aissue+is%3Aclosed)" >> $GITHUB_ENV
-          echo "OPEN_ISSUE_LINK=[open issues]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/issues)" >> $GITHUB_ENV
       
       - name: Read text for inactive issues
         run: |
@@ -72,7 +73,7 @@ jobs:
           close-previous: true
           linked-comments: false
           body: |-
-            :wave: This is a lab forum for the week of ${{ env.YYYYMMDD }} for reporting and discussing miscellaneous topics. People who have already been assigned to other ${{ env.OPEN_ISSUE_LINK }} are automatically tagged in this forum. Feature requests for this bot should be submitted [here](https://github.com/kfuku52/kflab-bot/issues). Previous weekly forum is \#{{ previousIssueNumber }}.
+            :wave: This is a lab forum for the week of ${{ env.YYYYMMDD }} for reporting and discussing miscellaneous topics. People who have already been assigned to ${{ env.OPEN_ISSUE_LINK }} are automatically tagged in this forum. Feature requests for this bot should be submitted [here](https://github.com/kfuku52/kflab-bot/issues). Previous weekly forum is \#{{ previousIssueNumber }}.
             
             As assignees, you are expected to post recent updates in the following issues (inactive period in parentheses). Please check the list, and whenever possible, close the issues with a conclusive post. If you feel you are no longer the most qualified personnel for the task, please consult with others about taking over. So far, we have successfully closed ${{ env.CLOSE_ISSUE_LINK }} :tada: Thank you for your contributions to let our lab keep running :thumbsup:
             
