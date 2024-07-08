@@ -8,7 +8,7 @@ env:
 
 on:
   schedule:
-    - cron: '0 3 * * 1' # For notation, see: https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows
+    - cron: '0 19 * * 0' # For notation, see: https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows
   workflow_dispatch:
     inputs:
       logLevel:
