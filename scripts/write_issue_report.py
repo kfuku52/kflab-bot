@@ -1,5 +1,7 @@
 import datetime
+import glob
 import json
+import os
 import re
 import subprocess
 import sys
@@ -47,12 +49,19 @@ inactive_issues = [ issue for issue in issues if (time.time()-issue['unix_timest
 inactive_issues = [ issue for issue in inactive_issues if remove_label not in issue['labels'] ]
 print('Number of inactive Issues: {:,}'.format(len(inactive_issues)))
 
-unique_assignees = list(set([ assignee.replace(' ', '') for issue in inactive_issues for assignee in issue['assignees'] if assignee!='' ]))
+unique_assignees = sorted(set([ assignee.replace(' ', '') for issue in inactive_issues for assignee in issue['assignees'] if assignee!='' ]))
 print('Number of assignees in inactive Issues: {:,}'.format(len(unique_assignees)))
 unique_assignee_txt = ','.join(unique_assignees)
 f = open('unique_assignees.txt', 'w')
-f.write(unique_assignee_txt)
+f.write(unique_assignee_txt + '\n')
 f.close()
+
+# Clean up stale per-assignee summaries before writing fresh ones
+for assignee_file in glob.glob('assignee_*.txt'):
+    try:
+        os.remove(assignee_file)
+    except OSError as exc:
+        print('Failed to remove {}: {}'.format(assignee_file, exc))
 
 # Member-wise contributions in the last X days
 num_day = 7
@@ -74,10 +83,12 @@ for assignee in unique_assignees:
     recent_contributions[assignee]['issue_numbers'] = list()
     recent_contributions[assignee]['timestamps'] = list()
 for issue_num in recent_issue_nums:
-    gh_command2 = ['gh', 'issue', 'view', str(issue_num), '--json', 'assignees,author,body,closed,closedAt,comments,createdAt,id,labels,milestone,number,projectCards,reactionGroups,state,title,updatedAt,url']
+    gh_command2 = ['gh', 'issue', 'view', str(issue_num), '--json', 'assignees,author,body,closed,closedAt,comments,createdAt,id,labels,milestone,number,reactionGroups,state,title,updatedAt,url']
     gh_command2_str = ' '.join(gh_command2)
     gh_out2 = subprocess.run(gh_command2_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    print('gh output: {}'.format(gh_out2))
+    if gh_out2.returncode != 0:
+        print('gh command failed (issue {}): {}'.format(issue_num, gh_out2.stderr.decode('utf8').strip()))
+        continue
     issue = json.loads(gh_out2.stdout.decode('utf8'))
     issue_created_at = datetime.datetime.strptime(issue['createdAt'], time_pattern)
     issue_author = issue['author']['login']
@@ -106,6 +117,11 @@ for assignee in unique_assignees:
     for assigned_issue in assigned_issues:
         inactive_day = int((time.time() - assigned_issue['unix_timestamp_updated']) / 86400)
         issue_txt += '{} ({} days), '.format(assigned_issue['issue_url'], inactive_day)
+    assignee_report_path = 'assignee_{}.txt'.format(assignee)
+    with open(assignee_report_path, 'w') as assignee_report:
+        for assigned_issue in assigned_issues:
+            inactive_day = int((time.time() - assigned_issue['unix_timestamp_updated']) / 86400)
+            assignee_report.write('{},{},{}\n'.format(assigned_issue['issue_number'], assigned_issue['issue_url'], inactive_day))
     issue_txt = re.sub(', $', '\n', issue_txt)
     txt = '[List of open issues where @{} is assigned]({})\n'
     issue_txt += txt.format(assignee, assigned_open_issue_url)
