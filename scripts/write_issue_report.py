@@ -82,6 +82,7 @@ for assignee in unique_assignees:
     recent_contributions[assignee] = dict()
     recent_contributions[assignee]['issue_numbers'] = list()
     recent_contributions[assignee]['timestamps'] = list()
+    recent_contributions[assignee]['wiki_pages'] = set()
 for issue_num in recent_issue_nums:
     gh_command2 = ['gh', 'issue', 'view', str(issue_num), '--json', 'assignees,author,body,closed,closedAt,comments,createdAt,id,labels,milestone,number,reactionGroups,state,title,updatedAt,url']
     gh_command2_str = ' '.join(gh_command2)
@@ -105,8 +106,106 @@ for assignee in unique_assignees:
     recent_contributions[assignee]['num_issue'] = len(set(recent_contributions[assignee]['issue_numbers']))
     recent_contributions[assignee]['num_comment'] = len(recent_contributions[assignee]['issue_numbers'])
 
+# Get Wiki updates from the last week
+wiki_pages = []
+try:
+    # Clone or update the wiki repository
+    wiki_dir = 'wiki_temp'
+    wiki_url = repo_url + '.wiki.git'
+    
+    if os.path.exists(wiki_dir):
+        # Update existing wiki clone
+        print('Updating existing wiki repository...')
+        subprocess.run(['git', '-C', wiki_dir, 'pull'], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    else:
+        # Clone the wiki repository
+        print('Cloning wiki repository from {}...'.format(wiki_url))
+        result = subprocess.run(['git', 'clone', wiki_url, wiki_dir], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if result.returncode != 0:
+            print('Warning: Could not clone wiki repository: {}'.format(result.stderr.decode('utf8').strip()))
+    
+    if os.path.exists(wiki_dir):
+        # Get commits from the last 7 days with affected files
+        since_date = startday.strftime('%Y-%m-%d')
+        git_log_cmd = ['git', '-C', wiki_dir, 'log', '--since={}'.format(since_date), '--name-status', '--pretty=format:%H|%an|%ad|%s', '--date=short']
+        result = subprocess.run(git_log_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        
+        if result.returncode == 0:
+            log_output = result.stdout.decode('utf8')
+            lines = log_output.strip().split('\n')
+            
+            current_commit = None
+            seen_pages = set()
+            
+            for line in lines:
+                if '|' in line:
+                    # This is a commit line
+                    parts = line.split('|')
+                    if len(parts) >= 4:
+                        current_commit = {
+                            'hash': parts[0],
+                            'author': parts[1],
+                            'date': parts[2],
+                            'message': parts[3]
+                        }
+                elif line.strip() and current_commit:
+                    # This is a file change line (e.g., "M Page-Name.md" or "A New-Page.md")
+                    parts = line.strip().split('\t')
+                    if len(parts) >= 2:
+                        status = parts[0]  # A (added), M (modified), D (deleted)
+                        filename = parts[1]
+                        
+                        # Convert filename to wiki page name (remove .md extension)
+                        if filename.endswith('.md'):
+                            page_name = filename[:-3].replace('-', ' ')
+                            page_key = (page_name, current_commit['date'])
+                            
+                            if page_key not in seen_pages and status in ['A', 'M']:
+                                seen_pages.add(page_key)
+                                action = 'Created' if status == 'A' else 'Updated'
+                                wiki_pages.append({
+                                    'name': page_name,
+                                    'action': action,
+                                    'date': current_commit['date'],
+                                    'author': current_commit['author'],
+                                    'message': current_commit['message']
+                                })
+                                
+                                # Track wiki contributions per assignee
+                                if current_commit['author'] in recent_contributions:
+                                    recent_contributions[current_commit['author']]['wiki_pages'].add(page_name)
+            
+            print('Found {:,} wiki page updates in the last {:,} days'.format(len(wiki_pages), num_day))
+        else:
+            print('Warning: Could not get wiki git log: {}'.format(result.stderr.decode('utf8').strip()))
+            
+except Exception as e:
+    print('Warning: Error processing wiki updates: {}'.format(str(e)))
+
 issue_txt = '### Issue summary\n'
 issue_txt += 'The following lists include the issues that have been inactive for more than {:,} days.\n\n'.format(since_last_updated_day)
+
+# Add wiki updates section
+issue_txt += '### Wiki Updates (Last {:,} Days)\n'.format(num_day)
+if wiki_pages:
+    issue_txt += 'The following wiki pages were created or updated:\n\n'
+    
+    # Sort by date (most recent first)
+    wiki_pages_sorted = sorted(wiki_pages, key=lambda x: x['date'], reverse=True)
+    
+    for page in wiki_pages_sorted:
+        wiki_page_url = repo_url + '/wiki/' + page['name'].replace(' ', '-')
+        issue_txt += '- **[{}]({})** - {} on {} by @{}\n'.format(
+            page['name'], 
+            wiki_page_url,
+            page['action'],
+            page['date'],
+            page['author']
+        )
+    issue_txt += '\n'
+else:
+    issue_txt += 'No wiki pages were created or updated in the last {:,} days.\n\n'.format(num_day)
+
 for assignee in unique_assignees:
     assigned_issues = [ issue for issue in inactive_issues if assignee in issue['assignees'] ]
     assigned_issue_nums = [ issue['issue_number'] for issue in assigned_issues ]
@@ -127,8 +226,9 @@ for assignee in unique_assignees:
     issue_txt += txt.format(assignee, assigned_open_issue_url)
     txt = '[List of open issues where @{} is not assigned but mentioned]({})\n'
     issue_txt += txt.format(assignee, mentioned_unassigned_open_issue_url)
-    txt = 'Thank you for your {:,} contributions on {:,} issues in the last {:,} days!\n'
-    issue_txt += txt.format(recent_contributions[assignee]['num_comment'], recent_contributions[assignee]['num_issue'], num_day)
+    txt = 'Thank you for your {:,} contributions on {:,} issues and {:,} wiki pages in the last {:,} days!\n'
+    num_wiki_pages = len(recent_contributions[assignee]['wiki_pages'])
+    issue_txt += txt.format(recent_contributions[assignee]['num_comment'], recent_contributions[assignee]['num_issue'], num_wiki_pages, num_day)
     issue_txt += '\n'
 
 unassigned_issues = [ issue for issue in issues if issue['assignees'][0]=='' ]
