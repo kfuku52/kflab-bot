@@ -127,7 +127,7 @@ try:
     if os.path.exists(wiki_dir):
         # Get commits from the last 7 days with affected files
         since_date = startday.strftime('%Y-%m-%d')
-        git_log_cmd = ['git', '-C', wiki_dir, 'log', '--since={}'.format(since_date), '--name-status', '--pretty=format:%H|%an|%ad|%s', '--date=short']
+        git_log_cmd = ['git', '-C', wiki_dir, 'log', '--since={}'.format(since_date), '--name-status', '--pretty=format:%H|%ae|%ad|%s', '--date=short']
         result = subprocess.run(git_log_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         
         if result.returncode == 0:
@@ -142,9 +142,26 @@ try:
                     # This is a commit line
                     parts = line.split('|')
                     if len(parts) >= 4:
+                        author_email = parts[1]
+                        
+                        # Try to extract GitHub username from email
+                        author_username = None
+                        if '@users.noreply.github.com' in author_email:
+                            # GitHub noreply email format: username@users.noreply.github.com or ID+username@users.noreply.github.com
+                            email_part = author_email.split('@')[0]
+                            if '+' in email_part:
+                                author_username = email_part.split('+')[1]
+                            else:
+                                author_username = email_part
+                        
+                        # If we couldn't extract from email, use the full email for display
+                        if not author_username:
+                            author_username = author_email.split('@')[0]
+                        
                         current_commit = {
                             'hash': parts[0],
-                            'author': parts[1],
+                            'author': author_username,
+                            'author_email': author_email,
                             'date': parts[2],
                             'message': parts[3]
                         }
@@ -182,29 +199,29 @@ try:
 except Exception as e:
     print('Warning: Error processing wiki updates: {}'.format(str(e)))
 
-issue_txt = '### Issue summary\n'
-issue_txt += 'The following lists include the issues that have been inactive for more than {:,} days.\n\n'.format(since_last_updated_day)
-
 # Add wiki updates section
-issue_txt += '### Wiki Updates (Last {:,} Days)\n'.format(num_day)
+wiki_txt = '### Wiki updates (last {:,} days)\n'.format(num_day)
 if wiki_pages:
-    issue_txt += 'The following wiki pages were created or updated:\n\n'
-    
+    wiki_txt += 'The following wiki pages were created or updated:\n\n'
+
     # Sort by date (most recent first)
     wiki_pages_sorted = sorted(wiki_pages, key=lambda x: x['date'], reverse=True)
     
     for page in wiki_pages_sorted:
         wiki_page_url = repo_url + '/wiki/' + page['name'].replace(' ', '-')
-        issue_txt += '- **[{}]({})** - {} on {} by @{}\n'.format(
+        wiki_txt += '- **[{}]({})** - {} on {} by {}\n'.format(
             page['name'], 
             wiki_page_url,
             page['action'],
             page['date'],
             page['author']
         )
-    issue_txt += '\n'
+    wiki_txt += '\n'
 else:
-    issue_txt += 'No wiki pages were created or updated in the last {:,} days.\n\n'.format(num_day)
+    wiki_txt += 'No wiki pages were created or updated in the last {:,} days.\n\n'.format(num_day)
+
+issue_txt = '### Issue summary\n'
+issue_txt += 'The following lists include the issues that have been inactive for more than {:,} days.\n\n'.format(since_last_updated_day)
 
 for assignee in unique_assignees:
     assigned_issues = [ issue for issue in inactive_issues if assignee in issue['assignees'] ]
@@ -243,6 +260,7 @@ else:
 issue_txt = re.sub(', $', '\n\n', issue_txt)
 
 f = open('issue_report.txt', 'w')
+f.write(wiki_txt)
 f.write(issue_txt)
 f.close()
 
