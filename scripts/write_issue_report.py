@@ -83,6 +83,8 @@ for assignee in unique_assignees:
     recent_contributions[assignee]['issue_numbers'] = list()
     recent_contributions[assignee]['timestamps'] = list()
     recent_contributions[assignee]['wiki_pages'] = set()
+    recent_contributions[assignee]['reactions_given'] = 0
+    recent_contributions[assignee]['reactions_received'] = 0
 for issue_num in recent_issue_nums:
     gh_command2 = ['gh', 'issue', 'view', str(issue_num), '--json', 'assignees,author,body,closed,closedAt,comments,createdAt,id,labels,milestone,number,reactionGroups,state,title,updatedAt,url']
     gh_command2_str = ' '.join(gh_command2)
@@ -96,12 +98,53 @@ for issue_num in recent_issue_nums:
     if (issue_created_at > startday)&(issue_author in recent_contributions.keys()):
         recent_contributions[issue_author]['issue_numbers'].append(issue_num)
         recent_contributions[issue_author]['timestamps'].append(issue_created_at)
+    
+    # Track reactions on the issue itself
+    if 'reactionGroups' in issue and issue['reactionGroups']:
+        # Get detailed reaction info to see who reacted
+        gh_command_reactions = ['gh', 'api', 'repos/{}/issues/{}/reactions'.format(repo_url.replace('https://github.com/', ''), issue_num), '--paginate']
+        gh_command_reactions_str = ' '.join(gh_command_reactions)
+        gh_out_reactions = subprocess.run(gh_command_reactions_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if gh_out_reactions.returncode == 0:
+            reactions = json.loads(gh_out_reactions.stdout.decode('utf8'))
+            for reaction in reactions:
+                reaction_created_at = datetime.datetime.strptime(reaction['created_at'], time_pattern)
+                reactor = reaction['user']['login']
+                if reaction_created_at > startday:
+                    # Count reactions given
+                    if reactor in recent_contributions.keys():
+                        recent_contributions[reactor]['reactions_given'] += 1
+                    # Count reactions received by issue author
+                    if issue_author in recent_contributions.keys():
+                        recent_contributions[issue_author]['reactions_received'] += 1
+    
     for comment in issue['comments']:
         comment_created_at = datetime.datetime.strptime(comment['createdAt'], time_pattern)
         comment_author = comment['author']['login']
         if (comment_created_at > startday)&(comment_author in recent_contributions.keys()):
             recent_contributions[comment_author]['issue_numbers'].append(issue_num)
             recent_contributions[comment_author]['timestamps'].append(comment_created_at)
+        
+        # Track reactions on comments
+        if 'reactions' in comment and comment['reactions']:
+            comment_id = comment['id']
+            # Note: comment reactions are included in the issue view JSON, but we need to check if they have the detailed user info
+            # The reactionGroups in comments may not have user details, so we'll need to make an API call
+            gh_command_comment_reactions = ['gh', 'api', 'repos/{}/issues/comments/{}/reactions'.format(repo_url.replace('https://github.com/', ''), comment_id), '--paginate']
+            gh_command_comment_reactions_str = ' '.join(gh_command_comment_reactions)
+            gh_out_comment_reactions = subprocess.run(gh_command_comment_reactions_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if gh_out_comment_reactions.returncode == 0:
+                comment_reactions = json.loads(gh_out_comment_reactions.stdout.decode('utf8'))
+                for reaction in comment_reactions:
+                    reaction_created_at = datetime.datetime.strptime(reaction['created_at'], time_pattern)
+                    reactor = reaction['user']['login']
+                    if reaction_created_at > startday:
+                        # Count reactions given
+                        if reactor in recent_contributions.keys():
+                            recent_contributions[reactor]['reactions_given'] += 1
+                        # Count reactions received by comment author
+                        if comment_author in recent_contributions.keys():
+                            recent_contributions[comment_author]['reactions_received'] += 1
 for assignee in unique_assignees:
     recent_contributions[assignee]['num_issue'] = len(set(recent_contributions[assignee]['issue_numbers']))
     recent_contributions[assignee]['num_comment'] = len(recent_contributions[assignee]['issue_numbers'])
@@ -243,9 +286,11 @@ for assignee in unique_assignees:
     issue_txt += txt.format(assignee, assigned_open_issue_url)
     txt = '[List of open issues where @{} is not assigned but mentioned]({})\n'
     issue_txt += txt.format(assignee, mentioned_unassigned_open_issue_url)
-    txt = 'Thank you for your {:,} contributions on {:,} issues and {:,} wiki pages in the last {:,} days!\n'
+    txt = 'Thank you for your {:,} contributions on {:,} issues, writing in {:,} wiki pages, and giving {:,} reactions in the last {:,} days!\n'
     num_wiki_pages = len(recent_contributions[assignee]['wiki_pages'])
-    issue_txt += txt.format(recent_contributions[assignee]['num_comment'], recent_contributions[assignee]['num_issue'], num_wiki_pages, num_day)
+    issue_txt += txt.format(recent_contributions[assignee]['num_comment'], recent_contributions[assignee]['num_issue'], num_wiki_pages, recent_contributions[assignee]['reactions_given'], num_day)
+    #txt = 'You received {:,} reactions on your posts.\n'
+    #issue_txt += txt.format(recent_contributions[assignee]['reactions_received'])
     issue_txt += '\n'
 
 unassigned_issues = [ issue for issue in issues if issue['assignees'][0]=='' ]
