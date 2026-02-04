@@ -25,9 +25,10 @@ jobs:
           # Replace /all with the list of collaborators
           new_body="${COMMENT_BODY//\/all/${collaborators}}"
 
-          # Update the comment using gh api with --field to handle special characters
+          # Update the comment using JSON input to avoid @ being interpreted as file
+          echo "{\"body\": $(echo "$new_body" | jq -Rs .)}" | \
           gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }} \
             -X PATCH \
-            --field body="${new_body}"
+            --input -
 
           echo "Updated comment to mention: ${collaborators}"
