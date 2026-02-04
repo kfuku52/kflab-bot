@@ -78,6 +78,8 @@ recent_issue_nums = sorted([ int(rin) for rin in recent_issue_nums if rin!='' ])
 print('Issues updated in the last {:,} days: {}'.format(num_day, ', '.join([ str(r) for r in recent_issue_nums ])))
 time_pattern = '%Y-%m-%dT%H:%M:%SZ'
 recent_contributions = dict()
+# Create case-insensitive lookup map for matching wiki authors and reactors
+assignee_lookup = {assignee.lower(): assignee for assignee in unique_assignees}
 for assignee in unique_assignees:
     recent_contributions[assignee] = dict()
     recent_contributions[assignee]['issue_numbers'] = list()
@@ -102,11 +104,20 @@ for issue_num in recent_issue_nums:
     # Track reactions on the issue itself
     if 'reactionGroups' in issue and issue['reactionGroups']:
         # Get detailed reaction info to see who reacted
-        gh_command_reactions = ['gh', 'api', 'repos/{}/issues/{}/reactions'.format(repo_url.replace('https://github.com/', ''), issue_num), '--paginate']
+        gh_command_reactions = ['gh', 'api', 'repos/{}/issues/{}/reactions'.format(repo_url.replace('https://github.com/', ''), issue_num), '--paginate', '--jq', "'.[]'"]
         gh_command_reactions_str = ' '.join(gh_command_reactions)
         gh_out_reactions = subprocess.run(gh_command_reactions_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if gh_out_reactions.returncode == 0:
-            reactions = json.loads(gh_out_reactions.stdout.decode('utf8'))
+            # Parse newline-delimited JSON objects from --jq '.[]'
+            reactions = []
+            for line in gh_out_reactions.stdout.decode('utf8').strip().split('\n'):
+                if line.strip():
+                    try:
+                        reactions.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        print('Warning: Could not parse reaction JSON: {}'.format(line[:100]))
+            if reactions:
+                print('Found {} reactions on issue {}'.format(len(reactions), issue_num))
             for reaction in reactions:
                 reaction_created_at = datetime.datetime.strptime(reaction['created_at'], time_pattern)
                 reactor = reaction['user']['login']
@@ -130,11 +141,18 @@ for issue_num in recent_issue_nums:
             comment_id = comment['id']
             # Note: comment reactions are included in the issue view JSON, but we need to check if they have the detailed user info
             # The reactionGroups in comments may not have user details, so we'll need to make an API call
-            gh_command_comment_reactions = ['gh', 'api', 'repos/{}/issues/comments/{}/reactions'.format(repo_url.replace('https://github.com/', ''), comment_id), '--paginate']
+            gh_command_comment_reactions = ['gh', 'api', 'repos/{}/issues/comments/{}/reactions'.format(repo_url.replace('https://github.com/', ''), comment_id), '--paginate', '--jq', "'.[]'"]
             gh_command_comment_reactions_str = ' '.join(gh_command_comment_reactions)
             gh_out_comment_reactions = subprocess.run(gh_command_comment_reactions_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if gh_out_comment_reactions.returncode == 0:
-                comment_reactions = json.loads(gh_out_comment_reactions.stdout.decode('utf8'))
+                # Parse newline-delimited JSON objects from --jq '.[]'
+                comment_reactions = []
+                for line in gh_out_comment_reactions.stdout.decode('utf8').strip().split('\n'):
+                    if line.strip():
+                        try:
+                            comment_reactions.append(json.loads(line))
+                        except json.JSONDecodeError:
+                            print('Warning: Could not parse comment reaction JSON: {}'.format(line[:100]))
                 for reaction in comment_reactions:
                     reaction_created_at = datetime.datetime.strptime(reaction['created_at'], time_pattern)
                     reactor = reaction['user']['login']
@@ -231,9 +249,11 @@ try:
                                     'message': current_commit['message']
                                 })
                                 
-                                # Track wiki contributions per assignee
-                                if current_commit['author'] in recent_contributions:
-                                    recent_contributions[current_commit['author']]['wiki_pages'].add(page_name)
+                                # Track wiki contributions per assignee (case-insensitive matching)
+                                author_lower = current_commit['author'].lower()
+                                if author_lower in assignee_lookup:
+                                    matched_assignee = assignee_lookup[author_lower]
+                                    recent_contributions[matched_assignee]['wiki_pages'].add(page_name)
             
             print('Found {:,} wiki page updates in the last {:,} days'.format(len(wiki_pages), num_day))
         else:
