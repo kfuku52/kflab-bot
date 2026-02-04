@@ -69,10 +69,10 @@ today = datetime.datetime.today()
 today_str = today.strftime('%Y-%m-%d')
 startday = datetime.datetime.now() - datetime.timedelta(days=num_day)
 startday_str = startday.strftime('%Y-%m-%d')
-gh_command1 = ['gh', 'issue', 'list', '--limit', str(1000), '--state', 'all', '--search', '"updated:{}..{}"'.format(startday_str, today_str)]
+gh_command1 = ['gh', 'issue', 'list', '--limit', str(1000), '--state', 'all', '--search', 'updated:{}..{}'.format(startday_str, today_str)]
 gh_command1_str = ' '.join(gh_command1)
 print('gh command: {}'.format(gh_command1_str))
-gh_out1 = subprocess.run(gh_command1_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+gh_out1 = subprocess.run(gh_command1, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 recent_issue_nums = re.sub('\t.*', '', gh_out1.stdout.decode('utf8')).split('\n')
 recent_issue_nums = sorted([ int(rin) for rin in recent_issue_nums if rin!='' ])
 print('Issues updated in the last {:,} days: {}'.format(num_day, ', '.join([ str(r) for r in recent_issue_nums ])))
@@ -104,9 +104,8 @@ for issue_num in recent_issue_nums:
     # Track reactions on the issue itself
     if 'reactionGroups' in issue and issue['reactionGroups']:
         # Get detailed reaction info to see who reacted
-        gh_command_reactions = ['gh', 'api', 'repos/{}/issues/{}/reactions'.format(repo_url.replace('https://github.com/', ''), issue_num), '--paginate', '--jq', "'.[]'"]
-        gh_command_reactions_str = ' '.join(gh_command_reactions)
-        gh_out_reactions = subprocess.run(gh_command_reactions_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        gh_command_reactions = ['gh', 'api', 'repos/{}/issues/{}/reactions'.format(repo_url.replace('https://github.com/', ''), issue_num), '--paginate', '--jq', '.[]']
+        gh_out_reactions = subprocess.run(gh_command_reactions, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if gh_out_reactions.returncode == 0:
             # Parse newline-delimited JSON objects from --jq '.[]'
             reactions = []
@@ -141,9 +140,8 @@ for issue_num in recent_issue_nums:
             comment_id = comment['id']
             # Note: comment reactions are included in the issue view JSON, but we need to check if they have the detailed user info
             # The reactionGroups in comments may not have user details, so we'll need to make an API call
-            gh_command_comment_reactions = ['gh', 'api', 'repos/{}/issues/comments/{}/reactions'.format(repo_url.replace('https://github.com/', ''), comment_id), '--paginate', '--jq', "'.[]'"]
-            gh_command_comment_reactions_str = ' '.join(gh_command_comment_reactions)
-            gh_out_comment_reactions = subprocess.run(gh_command_comment_reactions_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            gh_command_comment_reactions = ['gh', 'api', 'repos/{}/issues/comments/{}/reactions'.format(repo_url.replace('https://github.com/', ''), comment_id), '--paginate', '--jq', '.[]']
+            gh_out_comment_reactions = subprocess.run(gh_command_comment_reactions, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if gh_out_comment_reactions.returncode == 0:
                 # Parse newline-delimited JSON objects from --jq '.[]'
                 comment_reactions = []
