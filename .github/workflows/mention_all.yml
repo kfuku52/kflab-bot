@@ -1,0 +1,33 @@
+name: mention_all
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  expand_mention_all:
+    # Only run if the comment contains @all
+    if: contains(github.event.comment.body, '@all')
+    permissions:
+      contents: read
+      issues: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Expand @all to mention all collaborators
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          # Get all collaborators
+          collaborators=$(gh api repos/${{ github.repository }}/collaborators --jq '.[].login' | sed 's/^/@/' | tr '\n' ' ')
+          echo "Collaborators: ${collaborators}"
+
+          # Replace @all with the list of collaborators
+          new_body="${COMMENT_BODY//@all/${collaborators}}"
+
+          # Update the comment using gh api with --field to handle special characters
+          gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }} \
+            -X PATCH \
+            --field body="${new_body}"
+
+          echo "Updated comment to mention: ${collaborators}"

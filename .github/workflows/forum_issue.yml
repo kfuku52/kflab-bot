@@ -38,7 +38,7 @@ jobs:
       
       - name: Get issue info and set variables
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
         run: |
           gh issue list --state open --limit 100000 --json number,assignees,updatedAt,url,title,labels | jq --raw-output '.[] | "\(.number)\n\([.assignees[].login] | join(", "))\n\((now - (.updatedAt | fromdateiso8601)) | if . < 60 then "\(.) seconds ago" elif . < 3600 then "\(. / 60) minutes ago" elif . < 86400 then "\(. / 3600) hours ago" else "\(. / 86400) days ago" end)\n\((.updatedAt | fromdateiso8601))\n\(.title)\n\(.url)\n\([.labels[].name] | join(", "))\n"' > gh_out.txt
           cat gh_out.txt
@@ -52,10 +52,6 @@ jobs:
           echo "NUM_CLOSE_ISSUE=$(echo ${num_close_issue})" >> $GITHUB_ENV
           echo "OPEN_ISSUE_LINK=[${num_open_issue} open issues]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/issues)" >> $GITHUB_ENV
           echo "CLOSE_ISSUE_LINK=[${num_close_issue} issues]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/issues?q=is%3Aissue+is%3Aclosed)" >> $GITHUB_ENV
-          # Get all collaborators and create @all mention string
-          all_collaborators=$(gh api repos/$GITHUB_REPOSITORY/collaborators --jq '.[].login' | sed 's/^/@/' | tr '\n' ' ')
-          echo "ALL_COLLABORATORS=${all_collaborators}" >> $GITHUB_ENV
-          echo "All collaborators: ${all_collaborators}"
       
       - name: Read text for inactive issues
         run: |
@@ -77,11 +73,9 @@ jobs:
           linked-comments: false
           body: |-
             :wave: This is a lab forum for the week of ${{ env.YYYYMMDD }} for reporting and discussing miscellaneous topics. People who have already been assigned to ${{ env.OPEN_ISSUE_LINK }} are automatically tagged in this forum. Feature requests for this bot should be submitted [here](https://github.com/kfuku52/kflab-bot/issues). Previous weekly forum is \#{{ previousIssueNumber }}.
-
-            **All collaborators:** ${{ env.ALL_COLLABORATORS }}
-
+            
             As assignees, you are expected to post recent updates in the following issues (inactive period in parentheses). Please check the list, and whenever possible, close the issues with a conclusive post. If you feel you are no longer the most qualified personnel for the task, please consult with others about taking over. So far, we have successfully closed ${{ env.CLOSE_ISSUE_LINK }} :tada: Thank you for your contributions to let our lab keep running :thumbsup:
-
+            
             ${{ env.ISSUE_REPORT_TXT }}
 
       - name: Remove tags in the previous issue
