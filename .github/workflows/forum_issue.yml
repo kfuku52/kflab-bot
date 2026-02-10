@@ -40,25 +40,26 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
         run: |
-          gh issue list --state open --limit 100000 --json number,assignees,updatedAt,url,title,labels | jq --raw-output '.[] | "\(.number)\n\([.assignees[].login] | join(", "))\n\((now - (.updatedAt | fromdateiso8601)) | if . < 60 then "\(.) seconds ago" elif . < 3600 then "\(. / 60) minutes ago" elif . < 86400 then "\(. / 3600) hours ago" else "\(. / 86400) days ago" end)\n\((.updatedAt | fromdateiso8601))\n\(.title)\n\(.url)\n\([.labels[].name] | join(", "))\n"' > gh_out.txt
-          cat gh_out.txt
-          python ./scripts/write_issue_report.py gh_out.txt "${{ env.INACTIVE_DAYS }}" "${{ env.ISSUE_LABEL }}" "${{ env.ISSUE_HYPERLINK }}" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
-          assignee_names=`ls assignee_*.txt | sed -e "s/assignee_//" -e "s/\.txt//" -e "s/[[:space:]]//g" | tr '\n' ',' | sed -e "s/,*$//"`
-          echo "assignee names from assignee files: ${assignee_names}"
-          echo "ASSIGNEE_TXT=$(cat unique_assignees.txt)" >> $GITHUB_ENV
-          echo "YYYYMMDD=$(date '+%Y-%m-%d')" >> $GITHUB_ENV
-          num_open_issue=$(gh issue list --limit 100000 --state open --json number | grep -o '"number":' | wc -l | tr -d '[:space:]')
-          num_close_issue=$(gh issue list --limit 100000 --state closed --json number | grep -o '"number":' | wc -l | tr -d '[:space:]')
-          echo "NUM_CLOSE_ISSUE=$(echo ${num_close_issue})" >> $GITHUB_ENV
-          echo "OPEN_ISSUE_LINK=[${num_open_issue} open issues]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/issues)" >> $GITHUB_ENV
-          echo "CLOSE_ISSUE_LINK=[${num_close_issue} issues]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/issues?q=is%3Aissue+is%3Aclosed)" >> $GITHUB_ENV
+          gh issue list --state open --limit 100000 --json number,assignees,updatedAt,url,title,labels > gh_out.json
+          echo "Fetched $(jq 'length' gh_out.json) open issues"
+          python ./scripts/write_issue_report.py gh_out.json "${{ env.INACTIVE_DAYS }}" "${{ env.ISSUE_LABEL }}" "${{ env.ISSUE_HYPERLINK }}" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+          assignee_txt=$(tr -d '\r\n' < unique_assignees.txt)
+          echo "ASSIGNEE_TXT=${assignee_txt}" >> "$GITHUB_ENV"
+          echo "YYYYMMDD=$(date '+%Y-%m-%d')" >> "$GITHUB_ENV"
+          num_open_issue=$(gh issue list --limit 100000 --state open --json number --jq 'length')
+          num_close_issue=$(gh issue list --limit 100000 --state closed --json number --jq 'length')
+          echo "NUM_CLOSE_ISSUE=${num_close_issue}" >> "$GITHUB_ENV"
+          echo "OPEN_ISSUE_LINK=[${num_open_issue} open issues]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/issues)" >> "$GITHUB_ENV"
+          echo "CLOSE_ISSUE_LINK=[${num_close_issue} issues]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/issues?q=is%3Aissue+is%3Aclosed)" >> "$GITHUB_ENV"
       
       - name: Read text for inactive issues
         run: |
-          ISSUE_REPORT_TXT=$(cat issue_report.txt)
-          echo "ISSUE_REPORT_TXT<<EOF" >> $GITHUB_ENV
-          echo "$ISSUE_REPORT_TXT" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          DELIMITER="ISSUE_REPORT_$(date +%s)_$RANDOM"
+          {
+            echo "ISSUE_REPORT_TXT<<${DELIMITER}"
+            cat issue_report.txt
+            echo "${DELIMITER}"
+          } >> "$GITHUB_ENV"
         id: inactive_issues
       
       - name: Renew forum issue
@@ -82,5 +83,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          previous_issue_num=`gh issue list --label "${{ env.ISSUE_LABEL }}" --state closed | head -n 1 | sed -e "s/[[:space:]].*//"`
-          gh issue edit ${previous_issue_num} --remove-assignee ${{ env.ASSIGNEE_TXT }}
+          previous_issue_num=$(gh issue list --label "${{ env.ISSUE_LABEL }}" --state closed --limit 1 --json number --jq '.[0].number // empty')
+          if [ -z "${previous_issue_num}" ]; then
+            echo "No closed weekly forum issue found. Skipping assignee cleanup."
+            exit 0
+          fi
+          if [ -z "${ASSIGNEE_TXT:-}" ]; then
+            echo "No assignees to remove. Skipping assignee cleanup."
+            exit 0
+          fi
+          gh issue edit "${previous_issue_num}" --remove-assignee "${ASSIGNEE_TXT}"

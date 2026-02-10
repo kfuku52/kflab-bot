@@ -3,11 +3,19 @@ name: mention_all
 on:
   issue_comment:
     types: [created]
+  issues:
+    types: [opened]
 
 jobs:
   expand_mention_all:
-    # Only run if the comment contains /all (using /all instead of @all to avoid GitHub auto-linking)
-    if: contains(github.event.comment.body, '/all')
+    # Run only when the target body contains /all and the author is trusted.
+    if: >-
+      (github.event_name == 'issue_comment' &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
+      contains(github.event.comment.body || '', '/all')) ||
+      (github.event_name == 'issues' &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association) &&
+      contains(github.event.issue.body || '', '/all'))
     permissions:
       contents: read
       issues: write
@@ -16,19 +24,192 @@ jobs:
       - name: Expand /all to mention all collaborators
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          REPOSITORY: ${{ github.repository }}
           COMMENT_BODY: ${{ github.event.comment.body }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
+          set -euo pipefail
+
           # Get all collaborators
-          collaborators=$(gh api repos/${{ github.repository }}/collaborators --jq '.[].login' | sed 's/^/@/' | tr '\n' ' ')
+          if ! collaborators=$(gh api repos/${REPOSITORY}/collaborators --paginate --jq '.[].login' | sort -fu | sed 's/^/@/' | tr '\n' ' '); then
+            echo "Failed to fetch collaborators. Skipping update."
+            exit 0
+          fi
+          collaborators=$(echo "${collaborators}" | sed 's/[[:space:]]*$//')
+          if [ -z "${collaborators}" ]; then
+            echo "No collaborators found. Skipping update."
+            exit 0
+          fi
           echo "Collaborators: ${collaborators}"
+          export COLLABORATORS="${collaborators}"
 
-          # Replace /all with the list of collaborators
-          new_body="${COMMENT_BODY//\/all/${collaborators}}"
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
 
-          # Update the comment using JSON input to avoid @ being interpreted as file
-          echo "{\"body\": $(echo "$new_body" | jq -Rs .)}" | \
-          gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }} \
-            -X PATCH \
-            --input -
+          RIGHT_BOUNDARY_CHARS = set('.,!?;:)]}')
 
-          echo "Updated comment to mention: ${collaborators}"
+          def is_mention_command_at(text, idx):
+              if not text.startswith('/all', idx):
+                  return False
+              if idx > 0 and text[idx - 1] == '\\':
+                  return False
+
+              # Only treat /all as a command when it starts a token.
+              # This avoids matching markdown link destinations like ](/all).
+              if idx > 0 and not text[idx - 1].isspace():
+                  return False
+
+              end_idx = idx + 4
+              if end_idx >= len(text):
+                  return True
+              right = text[end_idx]
+              return right.isspace() or right in RIGHT_BOUNDARY_CHARS
+
+          def strip_blockquote_prefix(line):
+              i = 0
+              n = len(line)
+              while True:
+                  j = i
+                  while j < n and (j - i) < 3 and line[j] in ' \t':
+                      j += 1
+                  if j < n and line[j] == '>':
+                      i = j + 1
+                      if i < n and line[i] == ' ':
+                          i += 1
+                      continue
+                  break
+              return line[i:]
+
+          def is_opening_fence(line):
+              line = strip_blockquote_prefix(line)
+              i = 0
+              n = len(line)
+              while i < n and i < 3 and line[i] in ' \t':
+                  i += 1
+              if i >= n:
+                  return None
+              ch = line[i]
+              if ch not in ('`', '~'):
+                  return None
+              j = i
+              while j < n and line[j] == ch:
+                  j += 1
+              fence_len = j - i
+              if fence_len < 3:
+                  return None
+              return ch, fence_len
+
+          def is_closing_fence(line, fence_ch, fence_len):
+              line = strip_blockquote_prefix(line)
+              i = 0
+              n = len(line)
+              while i < n and i < 3 and line[i] in ' \t':
+                  i += 1
+              j = i
+              while j < n and line[j] == fence_ch:
+                  j += 1
+              if (j - i) < fence_len:
+                  return False
+              while j < n and line[j] in ' \t\r\n':
+                  j += 1
+              return j == n
+
+          def replace_outside_inline_backticks(text, replacement, open_delim_len):
+              out = []
+              i = 0
+              n = len(text)
+              replaced = False
+
+              while i < n:
+                  if text[i] == '`':
+                      j = i
+                      while j < n and text[j] == '`':
+                          j += 1
+                      tick_len = j - i
+                      out.append(text[i:j])
+                      if open_delim_len == 0:
+                          open_delim_len = tick_len
+                      elif tick_len == open_delim_len:
+                          open_delim_len = 0
+                      i = j
+                      continue
+
+                  if open_delim_len == 0 and is_mention_command_at(text, i):
+                      out.append(replacement)
+                      i += 4
+                      replaced = True
+                      continue
+
+                  out.append(text[i])
+                  i += 1
+
+              return ''.join(out), replaced, open_delim_len
+
+          def replace_mentions(text, replacement):
+              lines = text.splitlines(keepends=True)
+              out_lines = []
+              replaced_any = False
+              fence = None
+              inline_open_delim_len = 0
+
+              for line in lines:
+                  if fence is not None:
+                      out_lines.append(line)
+                      if is_closing_fence(line, fence[0], fence[1]):
+                          fence = None
+                      continue
+
+                  if inline_open_delim_len == 0:
+                      opening = is_opening_fence(line)
+                      if opening is not None:
+                          fence = opening
+                          out_lines.append(line)
+                          continue
+
+                  new_line, replaced, inline_open_delim_len = replace_outside_inline_backticks(
+                      line, replacement, inline_open_delim_len
+                  )
+                  out_lines.append(new_line)
+                  replaced_any = replaced_any or replaced
+
+              return ''.join(out_lines), replaced_any
+
+          event_name = os.environ['EVENT_NAME']
+          repository = os.environ['REPOSITORY']
+          collaborators = os.environ['COLLABORATORS']
+
+          if event_name == 'issue_comment':
+              body = os.environ.get('COMMENT_BODY') or ''
+              endpoint = 'repos/{}/issues/comments/{}'.format(repository, os.environ['COMMENT_ID'])
+          elif event_name == 'issues':
+              body = os.environ.get('ISSUE_BODY') or ''
+              endpoint = 'repos/{}/issues/{}'.format(repository, os.environ['ISSUE_NUMBER'])
+          else:
+              print('Unsupported event: {}'.format(event_name))
+              sys.exit(0)
+
+          new_body, replaced = replace_mentions(body, collaborators)
+          if not replaced:
+              print('No eligible /all token outside code spans/blocks. Skipping update.')
+              sys.exit(0)
+
+          # GitHub issue/comment body size limit is 65536 bytes.
+          body_size_bytes = len(new_body.encode('utf-8'))
+          if body_size_bytes > 65536:
+              print('Expanded body is too large ({} bytes). Skipping update.'.format(body_size_bytes))
+              sys.exit(0)
+
+          payload = json.dumps({'body': new_body})
+          subprocess.run(
+              ['gh', 'api', endpoint, '-X', 'PATCH', '--input', '-'],
+              input=payload.encode('utf-8'),
+              check=True,
+          )
+          print('Updated {} at {}'.format(event_name, endpoint))
+          PY
