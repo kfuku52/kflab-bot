@@ -23,7 +23,8 @@ jobs:
     steps:
       - name: Expand /all to mention all collaborators
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
           REPOSITORY: ${{ github.repository }}
           COMMENT_BODY: ${{ github.event.comment.body }}
@@ -34,10 +35,22 @@ jobs:
           set -euo pipefail
 
           # Get all collaborators
-          if ! collaborators=$(gh api repos/${REPOSITORY}/collaborators --paginate --jq '.[].login' | sort -fu | sed 's/^/@/' | tr '\n' ' '); then
-            echo "Failed to fetch collaborators. Skipping update."
+          collaborators=""
+          collaborator_fetch_ok=0
+          for attempt in 1 2 3; do
+            if collaborators=$(gh api "repos/${REPOSITORY}/collaborators" --paginate --jq '.[].login' | sort -fu | sed 's/^/@/' | tr '\n' ' '); then
+              collaborator_fetch_ok=1
+              break
+            fi
+            echo "Failed to fetch collaborators on attempt ${attempt}. Retrying..."
+            sleep "${attempt}"
+          done
+
+          if [ "${collaborator_fetch_ok}" -ne 1 ]; then
+            echo "Failed to fetch collaborators after retries. Skipping update."
             exit 0
           fi
+
           collaborators=$(echo "${collaborators}" | sed 's/[[:space:]]*$//')
           if [ -z "${collaborators}" ]; then
             echo "No collaborators found. Skipping update."
@@ -206,10 +219,25 @@ jobs:
               sys.exit(0)
 
           payload = json.dumps({'body': new_body})
-          subprocess.run(
+          patch_result = subprocess.run(
               ['gh', 'api', endpoint, '-X', 'PATCH', '--input', '-'],
               input=payload.encode('utf-8'),
-              check=True,
+              stdout=subprocess.PIPE,
+              stderr=subprocess.PIPE,
+              check=False,
           )
+          if patch_result.returncode != 0:
+              stderr_text = patch_result.stderr.decode('utf-8', errors='replace')
+              stdout_text = patch_result.stdout.decode('utf-8', errors='replace')
+              error_text = '\n'.join(part for part in (stderr_text, stdout_text) if part.strip())
+              if 'HTTP 404' in error_text or '"status":"404"' in error_text or '"status": "404"' in error_text:
+                  print('Target {} was not found during update. Skipping.'.format(endpoint))
+                  sys.exit(0)
+              raise subprocess.CalledProcessError(
+                  patch_result.returncode,
+                  patch_result.args,
+                  output=patch_result.stdout,
+                  stderr=patch_result.stderr,
+              )
           print('Updated {} at {}'.format(event_name, endpoint))
           PY
