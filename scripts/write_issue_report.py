@@ -1,3 +1,4 @@
+import codecs
 import datetime
 import glob
 import hashlib
@@ -90,6 +91,69 @@ def unique_filename_components(values):
         filename_map[value] = candidate
 
     return filename_map
+
+
+def decode_git_path(path_text):
+    if len(path_text) >= 2 and path_text[0] == '"' and path_text[-1] == '"':
+        try:
+            decoded_bytes = codecs.escape_decode(path_text[1:-1].encode('utf-8'))[0]
+            return decoded_bytes.decode('utf-8')
+        except Exception:
+            return path_text[1:-1]
+    return path_text
+
+
+def parse_wiki_commit_line(line):
+    new_format_match = re.match(r'^([0-9a-fA-F]{6,40})\|([^|]*)\|([^|]*)\|(\d{4}-\d{2}-\d{2})\|(.*)$', line)
+    if new_format_match:
+        return {
+            'hash': new_format_match.group(1),
+            'author_email': new_format_match.group(2),
+            'author_name': new_format_match.group(3),
+            'date': new_format_match.group(4),
+            'message': new_format_match.group(5),
+        }
+
+    old_format_match = re.match(r'^([0-9a-fA-F]{6,40})\|([^|]*)\|(\d{4}-\d{2}-\d{2})\|(.*)$', line)
+    if old_format_match:
+        return {
+            'hash': old_format_match.group(1),
+            'author_email': old_format_match.group(2),
+            'author_name': '',
+            'date': old_format_match.group(3),
+            'message': old_format_match.group(4),
+        }
+
+    return None
+
+
+def wiki_author_candidates(author_email, author_name):
+    candidates = []
+
+    if '@users.noreply.github.com' in author_email:
+        email_part = author_email.split('@')[0]
+        if '+' in email_part:
+            candidates.append(email_part.split('+', 1)[1])
+        else:
+            candidates.append(email_part)
+
+    author_name = author_name.strip()
+    if author_name:
+        candidates.append(author_name)
+
+    email_local_part = author_email.split('@')[0].strip()
+    if email_local_part:
+        candidates.append(email_local_part)
+
+    unique_candidates = []
+    seen = set()
+    for candidate in candidates:
+        key = candidate.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        unique_candidates.append(candidate)
+    return unique_candidates
 
 
 def unique_case_insensitive(values):
@@ -663,7 +727,7 @@ try:
     if os.path.exists(wiki_dir):
         # Get commits from the last 7 days with affected files
         since_date = startday.strftime('%Y-%m-%d')
-        git_log_cmd = ['git', '-C', wiki_dir, 'log', '--since={}'.format(since_date), '--name-status', '--pretty=format:%H|%ae|%ad|%s', '--date=short']
+        git_log_cmd = ['git', '-C', wiki_dir, 'log', '--since={}'.format(since_date), '--name-status', '--pretty=format:%H|%ae|%an|%ad|%s', '--date=short']
         result = subprocess.run(git_log_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         
         if result.returncode == 0:
@@ -675,31 +739,20 @@ try:
             
             for line in lines:
                 if re.match(r'^[0-9a-fA-F]{6,40}\|', line):
-                    # This is a commit line
-                    parts = line.split('|', 3)
-                    if len(parts) >= 4:
-                        author_email = parts[1]
-                        
-                        # Try to extract GitHub username from email
-                        author_username = None
-                        if '@users.noreply.github.com' in author_email:
-                            # GitHub noreply email format: username@users.noreply.github.com or ID+username@users.noreply.github.com
-                            email_part = author_email.split('@')[0]
-                            if '+' in email_part:
-                                author_username = email_part.split('+')[1]
-                            else:
-                                author_username = email_part
-                        
-                        # If we couldn't extract from email, use the full email for display
-                        if not author_username:
-                            author_username = author_email.split('@')[0]
-                        
+                    commit_info = parse_wiki_commit_line(line)
+                    if commit_info:
+                        author_candidates = wiki_author_candidates(
+                            commit_info['author_email'],
+                            commit_info['author_name'],
+                        )
                         current_commit = {
-                            'hash': parts[0],
-                            'author': author_username,
-                            'author_email': author_email,
-                            'date': parts[2],
-                            'message': parts[3]
+                            'hash': commit_info['hash'],
+                            'author': author_candidates[0] if author_candidates else '',
+                            'author_candidates': author_candidates,
+                            'author_email': commit_info['author_email'],
+                            'author_name': commit_info['author_name'],
+                            'date': commit_info['date'],
+                            'message': commit_info['message']
                         }
                 elif line.strip() and current_commit:
                     # This is a file change line (e.g., "M Page-Name.md" or "A New-Page.md")
@@ -707,6 +760,7 @@ try:
                     if len(parts) >= 2:
                         status = parts[0]  # A (added), M (modified), D (deleted)
                         filename = parts[-1] if (status.startswith('R') or status.startswith('C')) and len(parts) >= 3 else parts[1]
+                        filename = decode_git_path(filename)
                         
                         # Convert filename to wiki page name (remove .md extension)
                         if filename.endswith('.md'):
@@ -715,9 +769,13 @@ try:
                             is_page_update = (status in ['A', 'M'] or status.startswith('R') or status.startswith('C'))
                             if is_page_update:
                                 # Track wiki contributions per assignee, even when page display rows are deduplicated.
-                                author_lower = current_commit['author'].lower()
-                                if author_lower in assignee_lookup:
-                                    matched_assignee = assignee_lookup[author_lower]
+                                matched_assignee = None
+                                for author_candidate in current_commit.get('author_candidates', []):
+                                    author_lower = author_candidate.lower()
+                                    if author_lower in assignee_lookup:
+                                        matched_assignee = assignee_lookup[author_lower]
+                                        break
+                                if matched_assignee:
                                     recent_contributions[matched_assignee]['wiki_pages'].add(page_name)
 
                                 if page_key not in seen_pages:

@@ -1442,6 +1442,35 @@ class WriteIssueReportTests(unittest.TestCase):
         self.assertEqual(report.count('**[Shared Page]('), 1)
         self.assertEqual(report.count('writing in 1 wiki pages'), 2)
 
+    def test_wiki_quoted_non_ascii_path_and_author_name_are_counted(self):
+        issues = [{
+            'number': 1,
+            'assignees': [{'login': 'SayokoShirai'}],
+            'updatedAt': '2026-01-01T00:00:00Z',
+            'url': 'https://github.com/example/repo/issues/1',
+            'title': 'x',
+            'labels': [],
+        }]
+        git_log_output = (
+            'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa|sayoko.124@gmail.com|SayokoShirai|2026-03-05|Updated 毒劇物及びリスクアセスメント対象試薬のCRIS登録と保管・管理 (markdown)\n'
+            'M\t"\\346\\257\\222\\345\\212\\207\\347\\211\\251\\345\\217\\212\\343\\201\\263\\343\\203\\252\\343\\202\\271\\343\\202\\257\\343\\202\\242\\343\\202\\273\\343\\202\\271\\343\\203\\241\\343\\203\\263\\343\\203\\210\\345\\257\\276\\350\\261\\241\\350\\251\\246\\350\\226\\254\\343\\201\\256CRIS\\347\\231\\273\\351\\214\\262\\343\\201\\250\\344\\277\\235\\347\\256\\241\\343\\203\\273\\347\\256\\241\\347\\220\\206.md"\n'
+        )
+        result = self._run_script(
+            json.dumps(issues),
+            extra_env={
+                'GH_ISSUE_LIST_EXIT': '1',
+                'GIT_CLONE_EXIT': '0',
+                'GIT_LOG_EXIT': '0',
+                'GIT_LOG_OUTPUT': git_log_output,
+            },
+        )
+        self.assertEqual(result.returncode, 0)
+        report = self._read_text('issue_report.txt')
+        self.assertIn('**[毒劇物及びリスクアセスメント対象試薬のCRIS登録と保管・管理](', report)
+        self.assertIn('Updated on 2026-03-05 by SayokoShirai', report)
+        self.assertIn('@SayokoShirai:', report)
+        self.assertIn('writing in 1 wiki pages', report)
+
     def test_issue_and_reaction_contributions_match_assignee_case_insensitively(self):
         issues = [{
             'number': 1,
