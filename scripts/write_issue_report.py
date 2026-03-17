@@ -250,6 +250,13 @@ def parse_github_timestamp(value):
     return dt.astimezone(datetime.timezone.utc).replace(tzinfo=None)
 
 
+def resolve_current_utc():
+    override = os.environ.get('WRITE_ISSUE_REPORT_NOW')
+    if override:
+        return parse_github_timestamp(override)
+    return datetime.datetime.utcnow()
+
+
 def query_url(repo_url, query):
     return '{}{}'.format(repo_url + '/issues?q=', urllib.parse.quote(query, safe=''))
 
@@ -389,6 +396,9 @@ try:
 except ValueError as exc:
     raise SystemExit(str(exc))
 
+current_utc = resolve_current_utc()
+current_unix_timestamp = int(current_utc.replace(tzinfo=datetime.timezone.utc).timestamp())
+
 since_last_updated_sec = since_last_updated_day * 86400
 
 with open(hub_out_file, 'r') as f:
@@ -404,7 +414,7 @@ if hub_txt_stripped.startswith('[') or hub_txt_stripped.startswith('{'):
         raise SystemExit('Failed to parse issue JSON from {}: {}'.format(hub_out_file, exc))
     if not isinstance(issue_records, list):
         raise SystemExit('Expected JSON array in {}'.format(hub_out_file))
-    now_ts = time.time()
+    now_ts = current_unix_timestamp
     for i, issue_record in enumerate(issue_records):
         try:
             issue_number = int(issue_record['number'])
@@ -469,7 +479,7 @@ if not generate_issue_hyperlink:
         # https://github.com/hackmdio/hackmd-io-issues/issues/261
         issues[i]['issue_url'] = re.sub('.*/', '#<span/>', issues[i]['issue_url'])
 
-inactive_issues = [ issue for issue in issues if (time.time()-issue['unix_timestamp_updated']) > since_last_updated_sec ]
+inactive_issues = [ issue for issue in issues if (current_unix_timestamp-issue['unix_timestamp_updated']) > since_last_updated_sec ]
 inactive_issues = [ issue for issue in inactive_issues if not has_label_case_insensitive(issue['labels'], remove_label_normalized) ]
 print('Number of inactive Issues: {:,}'.format(len(inactive_issues)))
 
@@ -490,9 +500,9 @@ for assignee_file in glob.glob('assignee_*.txt'):
 
 # Member-wise contributions in the last X days
 num_day = 7
-today = datetime.datetime.utcnow()
+today = current_utc
 today_str = today.strftime('%Y-%m-%d')
-startday = datetime.datetime.utcnow() - datetime.timedelta(days=num_day)
+startday = current_utc - datetime.timedelta(days=num_day)
 startday_str = startday.strftime('%Y-%m-%d')
 gh_command1 = [
     'gh', 'issue', 'list',
@@ -836,7 +846,7 @@ for assignee in unique_assignees:
     if assigned_issues:
         issue_txt += '@{}: '.format(assignee)
         for assigned_issue in assigned_issues:
-            inactive_day = int((time.time() - assigned_issue['unix_timestamp_updated']) / 86400)
+            inactive_day = int((current_unix_timestamp - assigned_issue['unix_timestamp_updated']) / 86400)
             issue_txt += '{} ({} days), '.format(assigned_issue['issue_url'], inactive_day)
         issue_txt = re.sub(', $', '\n', issue_txt)
     else:
@@ -844,7 +854,7 @@ for assignee in unique_assignees:
     assignee_report_path = 'assignee_{}.txt'.format(assignee_filename_map[assignee])
     with open(assignee_report_path, 'w') as assignee_report:
         for assigned_issue in assigned_issues:
-            inactive_day = int((time.time() - assigned_issue['unix_timestamp_updated']) / 86400)
+            inactive_day = int((current_unix_timestamp - assigned_issue['unix_timestamp_updated']) / 86400)
             assignee_report.write('{},{},{}\n'.format(assigned_issue['issue_number'], assigned_issue['issue_url'], inactive_day))
     txt = '[List of open issues where @{} is assigned]({})\n'
     issue_txt += txt.format(assignee, assigned_open_issue_url)
@@ -867,7 +877,7 @@ else:
     txt = 'There are {} unassigned issues. If anyone is willing to voluntarily take care of these, it would be very helpful: '
     issue_txt += txt.format(len(unassigned_issues))
     for unassigned_issue in unassigned_issues:
-        inactive_day = int((time.time() - unassigned_issue['unix_timestamp_updated']) / 86400)
+        inactive_day = int((current_unix_timestamp - unassigned_issue['unix_timestamp_updated']) / 86400)
         issue_txt += '{} ({} days), '.format(unassigned_issue['issue_url'], inactive_day)
 issue_txt = re.sub(', $', '\n\n', issue_txt)
 

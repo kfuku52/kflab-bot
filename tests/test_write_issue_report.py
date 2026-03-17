@@ -10,6 +10,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = REPO_ROOT / 'scripts' / 'write_issue_report.py'
+FIXED_TEST_NOW = datetime.datetime(2026, 2, 10, 12, 0, 0)
+FIXED_TEST_NOW_ISO = FIXED_TEST_NOW.strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
 GH_STUB = """#!/usr/bin/env python3
@@ -168,6 +170,7 @@ class WriteIssueReportTests(unittest.TestCase):
         env['PATH'] = '{}{}{}'.format(self.bin_dir, os.pathsep, env.get('PATH', ''))
         env['GH_CALL_LOG'] = str(self.work / 'gh_calls.log')
         env['GIT_CALL_LOG'] = str(self.work / 'git_calls.log')
+        env['WRITE_ISSUE_REPORT_NOW'] = FIXED_TEST_NOW_ISO
         if extra_env:
             env.update(extra_env)
 
@@ -219,7 +222,7 @@ class WriteIssueReportTests(unittest.TestCase):
         self.assertIn('inactive_days must be an integer >= 0', result.stdout)
 
     def test_json_updated_at_is_treated_as_utc_not_local_timezone(self):
-        updated_at = (datetime.datetime.utcnow() - datetime.timedelta(hours=23)).strftime('%Y-%m-%dT%H:%M:%SZ')
+        updated_at = (FIXED_TEST_NOW - datetime.timedelta(hours=23)).strftime('%Y-%m-%dT%H:%M:%SZ')
         issues = [{
             'number': 1,
             'assignees': [{'login': 'alice'}],
@@ -241,7 +244,7 @@ class WriteIssueReportTests(unittest.TestCase):
         self.assertEqual(self._read_text('unique_assignees.txt').strip(), '')
 
     def test_json_updated_at_with_fractional_seconds_is_parsed(self):
-        updated_at = (datetime.datetime.utcnow() - datetime.timedelta(days=2)).strftime('%Y-%m-%dT%H:%M:%S') + '.123Z'
+        updated_at = (FIXED_TEST_NOW - datetime.timedelta(days=2)).strftime('%Y-%m-%dT%H:%M:%S') + '.123Z'
         issues = [{
             'number': 1,
             'assignees': [{'login': 'alice'}],
@@ -260,7 +263,7 @@ class WriteIssueReportTests(unittest.TestCase):
         self.assertEqual(self._read_text('unique_assignees.txt').strip(), 'alice')
 
     def test_json_updated_at_with_lowercase_z_is_parsed(self):
-        updated_at = (datetime.datetime.utcnow() - datetime.timedelta(days=2)).strftime('%Y-%m-%dT%H:%M:%S') + 'z'
+        updated_at = (FIXED_TEST_NOW - datetime.timedelta(days=2)).strftime('%Y-%m-%dT%H:%M:%S') + 'z'
         issues = [{
             'number': 1,
             'assignees': [{'login': 'alice'}],
