@@ -1,0 +1,4 @@
+# Source path -> destination path in kfuku52/kflab
+.github/workflows/forum_issue.yml
+.github/workflows/mention_all.yml
+scripts/write_issue_report.py
