@@ -1,3 +1,5 @@
+# NOTE: This workflow is synced into kfuku52/kflab from kfuku52/kflab-bot.
+# Make changes in kfuku52/kflab-bot and let the sync propagate them.
 name: mention_all
 
 on:
