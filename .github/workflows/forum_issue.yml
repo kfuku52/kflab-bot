@@ -25,15 +25,16 @@ on:
 
 jobs:
   forum_issue:
+    timeout-minutes: 15
     permissions:
       contents: read # https://github.com/actions/checkout/issues/254
       repository-projects: read # https://github.com/cli/cli/issues/6274
       issues: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3 # https://github.com/actions/checkout
+      - uses: actions/checkout@v4.2.2 # https://github.com/actions/checkout
       - name: Setup Python
-        uses: actions/setup-python@v2 # https://github.com/actions/setup-python
+        uses: actions/setup-python@v5.6.0 # https://github.com/actions/setup-python
         with:
           python-version: '3.9'
           architecture: 'x64'
@@ -67,7 +68,7 @@ jobs:
       - name: Renew forum issue
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        uses: imjohnbo/issue-bot@v3 # https://github.com/imjohnbo/issue-bot
+        uses: imjohnbo/issue-bot@572eed14422c4d6ca37e870f97e7da209422f5bd # v3.4.4
         with:
           labels: "${{ env.ISSUE_LABEL }}"
           title: "${{ env.TITLE_PREFIX }} ${{ env.YYYYMMDD }}"
