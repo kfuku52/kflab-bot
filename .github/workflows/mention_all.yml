@@ -4,9 +4,9 @@ name: mention_all
 
 on:
   issue_comment:
-    types: [created]
+    types: [created, edited]
   issues:
-    types: [opened]
+    types: [opened, edited]
 
 jobs:
   expand_mention_all:
