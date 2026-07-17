@@ -1,8 +1,15 @@
-[![forum_issue](https://github.com/kfuku52/kflab-bot/actions/workflows/forum_issue.yml/badge.svg?branch=main)](https://github.com/kfuku52/kflab-bot/actions/workflows/forum_issue.yml)
-[![mention_all](https://github.com/kfuku52/kflab-bot/actions/workflows/mention_all.yml/badge.svg?branch=main)](https://github.com/kfuku52/kflab-bot/actions/workflows/mention_all.yml)
+# kflab-bot (retired)
 
-## Overview
-In our laboratory, we manage tasks related to our research projects and lab operations on a private repository on GitHub. This repository (`kflab-bot`) is used for the development of the [GitHub Actions](https://github.com/features/actions)' bots that are used for its operation (stored [here](https://github.com/kfuku52/kflab-bot/tree/main/.github)). To mimic actual usage conditions, we may create random pages on [Issues](https://github.com/kfuku52/kflab-bot/issues), but please feel free to submit bug reports and feature requests there as usual.
+This public repository is retained as a read-only historical archive. Its GitHub
+Actions workflows were disabled on July 17, 2026.
+
+The source of truth for KFLAB automation, including the current GitHub Actions
+workflows and Google Apps Script projects, has moved to the private
+[`kfuku52/kflab`](https://github.com/kfuku52/kflab) repository.
+
+Please do not open new issues or submit changes here. Lab members should report
+automation problems in the private `kflab` repository.
 
 ## Licensing
+
 See [LICENSE](LICENSE) for details.
